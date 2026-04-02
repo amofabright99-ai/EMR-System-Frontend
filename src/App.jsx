@@ -2268,7 +2268,7 @@ const NurseTriage = ({ searchText }) => {
       const res = await fetch(`${BASE_URL}/api/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
+        body: JSON.stringify({ full_name: `${firstName} ${lastName}`, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
       });
       if (res.ok) {
         triggerToast(`${firstName} ${lastName} registered successfully!`);
@@ -3028,7 +3028,7 @@ const PharmInventory = ({ searchText }) => {
       const res = await fetch(`${BASE_URL}/api/inventory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ medication_name: medName, batch_number: batchNo, quantity: parseInt(quantity), expiry_date: expiry, category: 'General' }),
+        body: JSON.stringify({ medicine_name: medName, batch_number: batchNo, quantity: parseInt(quantity), expiry_date: expiry, category: 'General' }),
       });
       if (res.ok) {
         const newItem = { name: medName, cat: 'General', stock: `${quantity} Units`, exp: expiry || 'N/A', ...statusStyle('in stock', parseInt(quantity)) };
@@ -3683,8 +3683,7 @@ const UserManagement = () => {
       const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ name: fullName, email, role: role.toLowerCase().replace(' ', '_'), password }),
-      });
+      body: JSON.stringify({ full_name: fullName, email, password, role_id: role === 'doctor' ? 2 : role === 'nurse' ? 3 : role === 'lab_technician' ? 4 : role === 'pharmacist' ? 5 : 1 }), });
       if (res.ok) {
         const data = await res.json();
         const newUser = data.user || { name: fullName, role, status: 'Active' };

@@ -2180,6 +2180,7 @@ const NurseTriage = ({ searchText }) => {
   const [lastName, setLastName]     = React.useState('');
   const [dob, setDob]               = React.useState('');
   const [phone, setPhone]           = React.useState('');
+  const [email, setEmail]           = React.useState('');
   const [gender, setGender]         = React.useState('');
   const [dateOfReg, setDateOfReg]   = React.useState('');
 
@@ -2224,7 +2225,7 @@ const NurseTriage = ({ searchText }) => {
   const gridTemplate = '26% 18% 24% 18% 14%';
 
   const resetVitals   = () => { setTemp(''); setWeight(''); setBp(''); setHr(''); setNotes(''); };
-  const resetRegister = () => { setFirstName(''); setLastName(''); setDob(''); setPhone(''); setGender(''); setDateOfReg(''); };
+  const resetRegister = () => { setFirstName(''); setLastName(''); setDob(''); setPhone(''); setEmail(''); setGender(''); setDateOfReg(''); };
 
   // Save vitals → POST /api/medical-records
   const handleSaveVitals = async () => {
@@ -2268,7 +2269,7 @@ const NurseTriage = ({ searchText }) => {
       const res = await fetch(`${BASE_URL}/api/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ full_name: `${firstName} ${lastName}`, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
+        body: JSON.stringify({ full_name: `${firstName} ${lastName}`, email: email, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
       });
       if (res.ok) {
         triggerToast(`${firstName} ${lastName} registered successfully!`);
@@ -2415,6 +2416,11 @@ const NurseTriage = ({ searchText }) => {
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Phone Number</label>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 0234564765" style={{ width: '100%', padding: '13px 15px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Email Address</label>
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. patient@email.com" style={{ width: '100%', padding: '13px 15px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
               </div>
 
               {/* Gender */}

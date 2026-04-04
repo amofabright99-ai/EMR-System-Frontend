@@ -16,7 +16,6 @@ const DashboardLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '75px', fontWeight: '300', lineHeight: '0.6', color: 'white' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '11px', opacity: 0.5, marginTop: '5px', margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
 
@@ -1418,10 +1417,9 @@ const LabLayout = ({ children, searchText, setSearchText }) => {
               <div style={{ fontSize: '48px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
               <div>
                 <h2 style={{ fontSize: '16px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px', color: 'white' }}>HEALTHCARE<br/>EMR</h2>
-                <p style={{ fontSize: '10px', opacity: 0.5, margin: '3px 0 0 0' }}>Cloud-based System</p>
               </div>
             </div>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: '1.4' }}>Empowering Healthcare<br/>through Data</p>
+            <p style={{ fontSize: '11px', color: 'white', margin: 0, lineHeight: '1.4' }}>Empowering Healthcare<br/>through Data</p>
           </div>
           <nav style={{ marginTop: '10px' }}>
             {navItems.map((item) => (
@@ -1827,7 +1825,6 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -2624,7 +2621,6 @@ const PharmLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3151,7 +3147,6 @@ const PatientPortalLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3516,7 +3511,6 @@ const AdminLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -4356,10 +4350,9 @@ const LoginPage = () => {
             <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
             Empowering Healthcare through Data
           </p>
         </div>
@@ -4390,7 +4383,7 @@ const LoginPage = () => {
               <option value="lab_technician">Lab Technician</option>
               <option value="nurse">Nurse</option>
               <option value="pharmacist">Pharmacist</option>
-              <option value="patient">Patient</option>
+              
             </select>
           </div>
 
@@ -4434,6 +4427,193 @@ const LoginPage = () => {
   );
 };
 
+// --- PATIENT LOGIN PAGE ---
+const PatientLoginPage = () => {
+  const navigate = useNavigate();
+  const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const handleLogin = async () => {
+    if (!email || !password) {
+      setError('Please enter your email and password.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'patient' }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message || 'Invalid email or password. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('role', data.user.role);
+
+      navigate('/patient-dashboard');
+
+    } catch (err) {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleLogin();
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
+
+      {/* LEFT PANEL */}
+      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '45px 50px', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', position: 'relative', zIndex: 1, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
+            <div>
+              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+            </div>
+          </div>
+          <p style={{ margin: '20px 0 0 0', fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5' }}>
+            Access your health records, appointments and prescriptions anytime.
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL */}
+      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+        <div style={{ maxWidth: '380px', width: '100%' }}>
+
+          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', textAlign: 'center' }}>Patient Portal</h1>
+          <p style={{ fontSize: '14px', color: '#64748B', textAlign: 'center', margin: '0 0 40px 0', fontWeight: '500' }}>Sign in to view your health records</p>
+
+          {error && (
+            <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
+              🚫 {error}
+            </div>
+          )}
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Email Address:</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError(''); }}
+              onKeyDown={handleKeyDown}
+              placeholder="e.g. fatima@email.com"
+              style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '40px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Password:</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError(''); }}
+              onKeyDown={handleKeyDown}
+              placeholder="Enter your password"
+              style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+            />
+          </div>
+
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            style={{ width: '100%', padding: '18px', backgroundColor: loading ? '#94A3B8' : '#3B82F6', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.3px', transition: 'background 0.2s', marginBottom: '20px' }}
+          >
+            {loading ? 'Signing in...' : 'Access Patient Portal'}
+          </button>
+
+          <p style={{ textAlign: 'center', fontSize: '13px', color: '#64748B', margin: 0 }}>
+            Are you a staff member?{' '}
+            <span onClick={() => navigate('/login')} style={{ color: '#3B82F6', fontWeight: '700', cursor: 'pointer' }}>
+              Staff Login
+            </span>
+          </p>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- LANDING PAGE ---
+const LandingPage = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
+
+      {/* LEFT PANEL */}
+      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 50px', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '30px' }}>
+            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
+            <div>
+              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+            </div>
+          </div>
+          <p style={{ fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', margin: 0 }}>
+            Empowering Healthcare through Data
+          </p>
+        </div>
+      </div>
+
+      {/* RIGHT PANEL */}
+      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+        <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
+
+          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 12px 0' }}>Welcome</h1>
+          <p style={{ fontSize: '15px', color: '#64748B', margin: '0 0 50px 0', fontWeight: '500', lineHeight: '1.6' }}>
+            Please select how you would like to access the system.
+          </p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            
+              
+              <button
+              onClick={() => navigate('/login')}
+              style={{ width: '100%', padding: '20px', backgroundColor: '#3B82F6', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+            Staff Login
+            </button>
+            
+            <button
+              onClick={() => navigate('/patient-login')}
+              style={{ width: '100%', padding: '20px', backgroundColor: '#3B82F6', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
+            >
+              Patient Portal
+            </button>
+          </div>
+          <p style={{ marginTop: '30px', fontSize: '15px', color: 'black', fontWeight: '500' }}>
+        
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- LOGOUT CONFIRMATION PAGE ---
 const LogoutConfirmation = () => {
   const navigate = useNavigate();
@@ -4456,12 +4636,11 @@ const LogoutConfirmation = () => {
           <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
           <div>
             <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
           </div>
         </div>
 
         {/* Tagline */}
-        <p style={{ marginTop: '55px', fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
+        <p style={{ marginTop: '55px', fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
           Empowering Healthcare through Data
         </p>
       </div>
@@ -4474,8 +4653,8 @@ const LogoutConfirmation = () => {
             Your session has ended securely. Please log in again to continue managing patient records.
           </p>
           <button
-            onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/login'); }}
-            style={{ width: '100%', padding: '18px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.3px' }}
+              onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/'); }}            
+              style={{ width: '100%', padding: '18px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.3px' }}
           >
             Return to Login
           </button>
@@ -4492,8 +4671,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<LoginPage />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/patient-login" element={<PatientLoginPage />} />
         <Route path="/dashboard" element={<DashboardLayout searchText={searchText} setSearchText={setSearchText}><DoctorDashboard searchText={searchText} /></DashboardLayout>} />
         <Route path="/patients" element={<DashboardLayout searchText={searchText} setSearchText={setSearchText}><PatientDatabase searchText={searchText} /></DashboardLayout>} />
         <Route path="/schedule" element={<DashboardLayout searchText={searchText} setSearchText={setSearchText}><DoctorSchedule searchText={searchText} /></DashboardLayout>} />

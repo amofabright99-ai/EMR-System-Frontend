@@ -78,7 +78,6 @@ const DashboardLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '75px', fontWeight: '300', lineHeight: '0.6', color: 'white' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '11px', opacity: 0.5, marginTop: '5px', margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
 
@@ -1509,7 +1508,6 @@ const LabLayout = ({ children, searchText, setSearchText }) => {
               <div style={{ fontSize: '48px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
               <div>
                 <h2 style={{ fontSize: '16px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px', color: 'white' }}>HEALTHCARE<br/>EMR</h2>
-                <p style={{ fontSize: '10px', opacity: 0.5, margin: '3px 0 0 0' }}>Cloud-based System</p>
               </div>
             </div>
           </div>
@@ -1917,7 +1915,6 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -2134,15 +2131,20 @@ const NursePatients = ({ searchText }) => {
     fetchPatients();
   }, []);
 
-  const getName   = (p) => p.name || p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
+  const getName = (p) => p.full_name || p.name || 'Unknown';  
   const getId     = (p) => p.patient_id || p.id || p._id || '—';
   const getDiag   = (p) => p.diagnosis || p.primary_diagnosis || '—';
   const getStatus = (p) => p.status || 'Active';
 
-  const filtered = patients.filter(p => {
-    const q = searchText.toLowerCase();
-    return getName(p).toLowerCase().includes(q) || String(getId(p)).toLowerCase().includes(q);
-  });
+ const filtered = patients.filter(p => {
+  const q = searchText.toLowerCase();
+  return (
+    (p.full_name || '').toLowerCase().includes(q) ||
+    String(p.patient_id || '').toLowerCase().includes(q) ||
+    (p.email || '').toLowerCase().includes(q) ||
+    (p.national_patient_id || '').toLowerCase().includes(q)
+  );
+});
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
@@ -2389,25 +2391,27 @@ const NurseTriage = ({ searchText }) => {
 
   React.useEffect(() => {
     const fetchQueue = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`${BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } });
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.appointments || data.data || []);
-        const normalized = list.map(a => ({
-          n:    a.patient_name || (a.patient && a.patient.name) || 'Unknown',
-          id:   a.patient_id   || (a.patient && a.patient.id)   || a.id,
-          wait: a.wait_time    || '—',
-          s:    a.vitals_status || 'Pending',
-          sbg:  (a.vitals_status || '').toLowerCase() === 'captured' ? '#DCFCE7' : '#FEF3C7',
-          stc:  (a.vitals_status || '').toLowerCase() === 'captured' ? '#16A34A' : '#B45309',
-          appt_id: a.id || a._id,
-          ...priorityStyle(a.triage_level || a.priority),
-        }));
-        setQueue(normalized);
-      } catch { setQueue([]); }
-      finally { setLoading(false); }
-    };
+  try {
+    setLoading(true);
+    const res = await fetch(`${BASE_URL}/api/patients/triage/queue`, { 
+      headers: { Authorization: `Bearer ${token}` } 
+    });
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [];
+    const normalized = list.map(a => ({
+      n:    a.full_name || 'Unknown',
+      id:   a.patient_id,
+      wait: '—',
+      s:    'Pending',
+      sbg:  '#FEF3C7',
+      stc:  '#B45309',
+      appt_id: a.patient_id,
+      pl: 'P3', pLabel: 'Routine', pbg: '#DCFCE7', ptc: '#16A34A',
+    }));
+    setQueue(normalized);
+  } catch { setQueue([]); }
+  finally { setLoading(false); }
+};
     fetchQueue();
   }, []);
 
@@ -2419,37 +2423,36 @@ const NurseTriage = ({ searchText }) => {
 
   // Save vitals → POST /api/medical-records
   const handleSaveVitals = async () => {
-    setSubmitting(true);
-    try {
-      const res = await fetch(`${BASE_URL}/api/medical-records`, {
-        method: 'POST',
+  setSubmitting(true);
+  try {
+    const res = await fetch(`${BASE_URL}/api/medical-records`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        patient_id: selectedPatient.id,
+        temperature: temp,
+        weight: weight,
+        blood_pressure: bp,
+        pulse_rate: hr,
+        chief_complaint: notes,
+      }),
+    });
+
+    if (res.ok) {
+      await fetch(`${BASE_URL}/api/patients/${selectedPatient.id}/status`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          patient_id:     selectedPatient.id,
-          vitals: { temperature: temp, weight, blood_pressure: bp, heart_rate: hr },
-          clinical_notes: notes,
-          vitals_status:  'captured',
-        }),
+        body: JSON.stringify({ status: 'active' }),
       });
-      if (res.ok) {
-        // Also update appointment vitals status
-        if (selectedPatient.appt_id) {
-          await fetch(`${BASE_URL}/api/appointments/${selectedPatient.appt_id}/status`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ vitals_status: 'captured' }),
-          });
-        }
-        setQueue(prev => prev.map(p => p.n === selectedPatient.n
-          ? { ...p, s: 'Captured', sbg: '#DCFCE7', stc: '#16A34A' } : p
-        ));
-        triggerToast(`Vitals recorded successfully for ${selectedPatient.n}`);
-      } else {
-        triggerToast('Failed to save vitals. Please try again.', 'error');
-      }
-    } catch { triggerToast('Network error. Vitals not saved.', 'error'); }
-    finally { setSubmitting(false); setShowVitalsModal(false); resetVitals(); }
-  };
+
+      setQueue(prev => prev.filter(p => p.id !== selectedPatient.id));
+      triggerToast(`Vitals recorded for ${selectedPatient.n}. Patient sent to doctor queue.`);
+    } else {
+      triggerToast('Failed to save vitals. Please try again.', 'error');
+    }
+  } catch { triggerToast('Network error. Vitals not saved.', 'error'); }
+  finally { setSubmitting(false); setShowVitalsModal(false); resetVitals(); }
+};
 
   // Register patient → POST /api/patients (Nurse)
   const handleRegister = async () => {
@@ -2863,7 +2866,6 @@ const PharmLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3413,7 +3415,6 @@ const PatientPortalLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3778,7 +3779,6 @@ const AdminLayout = ({ children, searchText, setSearchText }) => {
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
-              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -4591,10 +4591,9 @@ const LandingPage = () => {
             <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
             </div>
           </div>
-          <p style={{ fontSize: '20px', color: 'rgba(255,255,255,0.7)', fontWeight: '400', lineHeight: '1.5', margin: 0 }}>
+          <p style={{ fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', margin: 0 }}>
             Empowering Healthcare through Data
           </p>
         </div>
@@ -4602,14 +4601,14 @@ const LandingPage = () => {
       <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
         <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
           <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 12px 0' }}>Welcome</h1>
-          <p style={{ fontSize: '15px', color: '#64748B', margin: '0 0 50px 0', fontWeight: '500', lineHeight: '1.6' }}>
+          <p style={{ fontSize: '15px', color: 'black', margin: '0 0 50px 0', fontWeight: '500', lineHeight: '1.6' }}>
             Please select how you would like to access the system.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <button onClick={() => navigate('/login')} style={{ width: '100%', padding: '20px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
+            <button onClick={() => navigate('/login')} style={{ width: '100%', padding: '20px', backgroundColor: 'blue', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
               Staff Login
             </button>
-            <button onClick={() => navigate('/patient-login')} style={{ width: '100%', padding: '20px', backgroundColor: 'white', color: '#1E293B', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
+            <button onClick={() => navigate('/patient-login')} style={{ width: '100%', padding: '20px', backgroundColor: 'blue', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
               Patient Portal
             </button>
           </div>
@@ -4658,7 +4657,6 @@ const PatientLoginPage = () => {
             <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
             </div>
           </div>
           <p style={{ margin: 0, fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5' }}>
@@ -4777,10 +4775,9 @@ const LoginPage = () => {
             <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
             Empowering Healthcare through Data
           </p>
         </div>
@@ -4811,7 +4808,6 @@ const LoginPage = () => {
               <option value="lab_technician">Lab Technician</option>
               <option value="nurse">Nurse</option>
               <option value="pharmacist">Pharmacist</option>
-              <option value="patient">Patient</option>
             </select>
           </div>
 
@@ -4877,12 +4873,11 @@ const LogoutConfirmation = () => {
           <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
           <div>
             <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
           </div>
         </div>
 
         {/* Tagline */}
-        <p style={{ marginTop: '55px', fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
+        <p style={{ marginTop: '55px', fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
           Empowering Healthcare through Data
         </p>
       </div>

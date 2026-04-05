@@ -1,6 +1,68 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 
+// --- RESPONSIVE STYLES ---
+const ResponsiveStyles = () => (
+  <style>{`
+    * { box-sizing: border-box; }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #F1F5F9; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+
+    /* Sidebar responsive */
+    .emr-sidebar { width: 240px; min-width: 200px; flex-shrink: 0; }
+    .emr-content { flex: 1; min-width: 0; overflow: hidden; }
+    .emr-page { padding: 30px 40px; }
+    .emr-header-search { width: 420px; }
+    .emr-stat-cards { display: flex; gap: 20px; flex-wrap: wrap; }
+    .emr-stat-card { flex: 1; min-width: 160px; }
+    .emr-modal { width: 480px; max-width: 95vw; }
+    .emr-table-row { font-size: 14px; }
+
+    /* Medium screens (laptops 1024px - 1366px) */
+    @media (max-width: 1366px) {
+      .emr-sidebar { width: 210px; }
+      .emr-page { padding: 25px 30px; }
+      .emr-header-search { width: 340px; }
+    }
+
+    /* Small laptops (768px - 1024px) */
+    @media (max-width: 1024px) {
+      .emr-sidebar { width: 190px; }
+      .emr-page { padding: 20px 24px; }
+      .emr-header-search { width: 260px; }
+      .emr-stat-cards { gap: 14px; }
+      .emr-table-row { font-size: 13px; }
+    }
+
+    /* Tablets (below 768px) */
+    @media (max-width: 768px) {
+      .emr-sidebar { width: 60px; }
+      .emr-sidebar .sidebar-label { display: none; }
+      .emr-sidebar .sidebar-logo-text { display: none; }
+      .emr-page { padding: 16px; }
+      .emr-header-search { width: 180px; }
+      .emr-stat-cards { flex-direction: column; }
+      .emr-modal { width: 95vw; }
+    }
+
+    /* Login page responsive */
+    .emr-login-left { width: 50%; }
+    .emr-login-right { width: 50%; }
+    @media (max-width: 768px) {
+      .emr-login-left { display: none; }
+      .emr-login-right { width: 100%; }
+    }
+
+    /* Table responsive */
+    @media (max-width: 1024px) {
+      .emr-hide-col { display: none; }
+    }
+  `}</style>
+);
+
 // --- MAIN LAYOUT (Locked UI) ---
 const DashboardLayout = ({ children, searchText, setSearchText }) => {
   const location = useLocation();
@@ -10,12 +72,13 @@ const DashboardLayout = ({ children, searchText, setSearchText }) => {
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       
       {/* LEFT SIDEBAR */}
-      <div style={{ width: '280px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div style={{ backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', className: 'emr-sidebar' }}>
         <div>
           <div style={{ padding: '45px 30px', display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ fontSize: '75px', fontWeight: '300', lineHeight: '0.6', color: 'white' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
+              <p style={{ fontSize: '11px', opacity: 0.5, marginTop: '5px', margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
 
@@ -28,7 +91,7 @@ const DashboardLayout = ({ children, searchText, setSearchText }) => {
         </div>
 
         {/* LOGOUT BUTTON */}
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
@@ -48,18 +111,18 @@ const DashboardLayout = ({ children, searchText, setSearchText }) => {
             <input 
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: '420px', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} 
+              style={{ width: 'clamp(200px, 30vw, 420px)', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} 
               placeholder="Search for patient name, ID..." 
             />
           </div>
           <div style={{ position: 'absolute', right: '50px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>Dr. Bright Amofa</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
           </div>
         </div>
 
         {/* Dynamic Page Content */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)', position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div style={{ flex: 1 }}>
             {children}
           </div>
@@ -154,15 +217,15 @@ const DoctorDashboard = ({ searchText }) => {
         <h1 style={{ marginBottom: '35px', fontWeight: '800', fontSize: '32px', color: '#1E293B' }}>Doctor Dashboard</h1>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '45px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '45px', flexWrap: 'wrap' }}>
           {[
             { l: 'Total Patients',      v: loading ? '—' : stats.total.toString(),   tc: '#1E293B', bg: 'white' },
             { l: 'Appointments Today',  v: loading ? '—' : stats.today.toString(),   tc: '#3B82F6', bg: '#EFF6FF' },
             { l: 'Pending Labs',        v: loading ? '—' : stats.pending.toString(), tc: '#B45309', bg: '#FFFBEB' }
           ].map((c, i) => (
-            <div key={i} style={{ padding: '35px 30px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: '1px solid #E2E8F0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div key={i} style={{ padding: 'clamp(20px, 2.5vw, 35px) clamp(18px, 2vw, 30px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '150px', border: '1px solid #E2E8F0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
               <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0, opacity: 0.8 }}>{c.l}</p>
-              <h2 style={{ fontSize: '48px', fontWeight: '800', margin: '20px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: '800', margin: '20px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
@@ -730,13 +793,13 @@ const DoctorSchedule = ({ searchText }) => {
         </div>
 
         {/* Live stat cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '45px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '45px', flexWrap: 'wrap' }}>
           {[
             { l: 'Pending Consultations', v: loading ? '—' : filteredData.filter(p => !completedPatients.includes(p.n)).length.toString(), bg: '#EFF6FF', tc: '#3B82F6' },
             { l: 'Completed Today',       v: loading ? '—' : completedPatients.length.toString(), bg: '#F0FDF4', tc: '#22C55E' },
             { l: 'High Priority Cases',   v: loading ? '—' : filteredData.filter(p => p.tLabel === 'Emergency').length.toString(), bg: '#FEF2F2', tc: '#EF4444' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '35px 30px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: '1px solid #E2E8F0' }}>
+            <div key={i} style={{ padding: 'clamp(20px, 2.5vw, 35px) clamp(18px, 2vw, 30px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '150px', border: '1px solid #E2E8F0' }}>
               <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
               <h2 style={{ fontSize: '56px', fontWeight: '800', margin: '20px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
@@ -761,7 +824,10 @@ const DoctorSchedule = ({ searchText }) => {
             )}
 
             {filteredData.map((p, i) => (
-              <div key={i} style={{ display: 'grid', gridTemplateColumns: gridTemplate, alignItems: 'center', backgroundColor: 'white', padding: '20px 25px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #E2E8F0', fontSize: '14px', fontWeight: '700' }}>
+              <div key={i} onClick={() => !completedPatients.includes(p.n) && handleStartConsultation(p)} style={{ display: 'grid', gridTemplateColumns: gridTemplate, alignItems: 'center', backgroundColor: 'white', padding: '20px 25px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #E2E8F0', fontSize: '14px', fontWeight: '700', cursor: completedPatients.includes(p.n) ? 'default' : 'pointer', transition: 'background 0.15s' }}
+                onMouseEnter={e => { if (!completedPatients.includes(p.n)) e.currentTarget.style.backgroundColor = '#F8FAFC'; }}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
+              >
                 <div>{p.n}</div><div>{p.t}</div><div>{p.r}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ color: '#64748B' }}>{p.tl}</span>
@@ -961,7 +1027,7 @@ const PatientProfile = () => {
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '30px' }}>
-        <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '35px', marginTop: 0 }}>Patient Profile</h1>
+        <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', marginBottom: '35px', marginTop: 0 }}>Patient Profile</h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px' }}>
           <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: '#E2E8F0' }} />
@@ -1019,38 +1085,64 @@ const PatientProfile = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '15% 25% 35% 25%', padding: '0 25px 15px 25px', color: '#64748B', fontSize: '12px', fontWeight: '800' }}>
               <div>DATE</div><div>DIAGNOSIS</div><div>TREATMENT</div><div>RECORDED BY</div>
             </div>
-            {historyData.map((h, i) => (
-              <div key={i} onClick={() => {
-                if (i === 0) setShowPrescriptionDetail(true);
-                if (i === 1) setShowHistory2(true);
-                if (i === 2) setShowHistory3(true);
-                if (i === 3) setShowHistory4(true);
-              }} style={{ display: 'grid', gridTemplateColumns: '15% 25% 35% 25%', alignItems: 'center', backgroundColor: 'white', padding: '20px 25px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #E2E8F0', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
-              >
-                <div style={{ color: '#1E293B' }}>{h.date}</div>
-                <div style={{ color: '#1E293B' }}>{h.d}</div>
-                <div style={{ color: '#1E293B' }}>{h.t}</div>
-                <div style={{ color: '#64748B' }}>{h.by}</div>
+            {historyData.length === 0 || (historyData.length === 1 && historyData[0].d === 'No records found') ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '14px', fontWeight: '600' }}>
+                No medical history recorded yet. Records will appear here after consultations.
               </div>
-            ))}
+            ) : (
+              historyData.map((h, i) => (
+                <div key={i} onClick={() => {
+                  if (i === 0) setShowPrescriptionDetail(true);
+                  if (i === 1) setShowHistory2(true);
+                  if (i === 2) setShowHistory3(true);
+                  if (i === 3) setShowHistory4(true);
+                }} style={{ display: 'grid', gridTemplateColumns: '15% 25% 35% 25%', alignItems: 'center', backgroundColor: 'white', padding: '20px 25px', borderRadius: '12px', marginBottom: '12px', border: '1px solid #E2E8F0', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}
+                >
+                  <div style={{ color: '#1E293B' }}>{h.date}</div>
+                  <div style={{ color: '#1E293B' }}>{h.d}</div>
+                  <div style={{ color: '#1E293B' }}>{h.t}</div>
+                  <div style={{ color: '#64748B' }}>{h.by}</div>
+                </div>
+              ))
+            )}
           </div>
         )}
 
         {/* --- DOCUMENTS TAB --- */}
         {activeTab === 'Documents' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {docsData.map((doc, i) => (
-              <div
-                key={i}
-                onClick={() => {
-                  if (i === 0) setShowLabResult(true);
-                  if (i === 1) setShowConsentModal(true);
-                  if (i === 2) setShowXRayModal(true);
-                  if (i === 3) setShowCertModal(true);
-                }}
+            {/* Real lab results from API */}
+            {apiLabResults.map((lab, i) => (
+              <div key={`lab-${i}`} onClick={() => setShowLabResult(true)}
                 style={{ display: 'flex', alignItems: 'center', backgroundColor: '#F8FAFC', padding: '20px 24px', borderRadius: '12px', border: '1px solid #E2E8F0', gap: '18px', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
+              >
+                <div style={{ width: '38px', height: '44px', backgroundColor: '#3B82F6', borderRadius: '6px', flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+                    <span style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B' }}>Lab Result — {lab.test_name || lab.test_type || 'Blood Test'}</span>
+                    <span style={{ padding: '3px 12px', borderRadius: '20px', backgroundColor: '#DBEAFE', color: '#1D4ED8', fontSize: '11px', fontWeight: '800' }}>{(lab.status || 'COMPLETED').toUpperCase()}</span>
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>
+                    Date: {lab.created_at ? new Date(lab.created_at).toLocaleDateString('en-GB') : '—'}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Fallback static docs if no API data yet */}
+            {apiLabResults.length === 0 && docsData.map((doc, i) => (
+              <div key={i} onClick={() => {
+                if (i === 0) setShowLabResult(true);
+                if (i === 1) setShowConsentModal(true);
+                if (i === 2) setShowXRayModal(true);
+                if (i === 3) setShowCertModal(true);
+              }} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#F8FAFC', padding: '20px 24px', borderRadius: '12px', border: '1px solid #E2E8F0', gap: '18px', cursor: 'pointer' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
               >
                 <div style={{ width: '38px', height: '44px', backgroundColor: '#3B82F6', borderRadius: '6px', flexShrink: 0 }} />
                 <div style={{ flex: 1 }}>
@@ -1105,7 +1197,7 @@ const PatientProfile = () => {
         {/* Lab Result Modal */}
         {showLabResult && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ width: '540px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+            <div style={{ width: 'min(540px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
               <div style={{ padding: '28px 30px 20px 30px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                   <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Lab Result: Full Blood Count (FBC)</h3>
@@ -1137,7 +1229,7 @@ const PatientProfile = () => {
         {/* Patient Consent Modal */}
         {showConsentModal && (
           <div onClick={() => setShowConsentModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(500px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Patient Consent — Asthma Treatment</h3>
                 <span onClick={() => setShowConsentModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}>×</span>
@@ -1160,7 +1252,7 @@ const PatientProfile = () => {
         {/* Chest X-Ray Modal */}
         {showXRayModal && (
           <div onClick={() => setShowXRayModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(500px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Imaging — Chest X-Ray (PA)</h3>
                 <span onClick={() => setShowXRayModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}>×</span>
@@ -1186,7 +1278,7 @@ const PatientProfile = () => {
         {/* Medical Certificate Modal */}
         {showCertModal && (
           <div onClick={() => setShowCertModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div onClick={e => e.stopPropagation()} style={{ width: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: 'min(500px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '32px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Medical Certificate — Sick Leave</h3>
                 <span onClick={() => setShowCertModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}>×</span>
@@ -1253,7 +1345,7 @@ const PatientProfile = () => {
       {/* NEW: Request New Laboratory Test Modal (from screenshot) */}
       {showLabModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '420px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(420px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             
             {/* Modal Header */}
             <div style={{ padding: '28px 30px 20px 30px', borderBottom: '1px solid #F1F5F9' }}>
@@ -1324,7 +1416,7 @@ const PatientProfile = () => {
       {/* NEW: New Prescription Modal (from screenshot) */}
       {showOrderModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '420px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(420px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
             {/* Header */}
             <div style={{ padding: '28px 30px 24px 30px' }}>
@@ -1410,16 +1502,16 @@ const LabLayout = ({ children, searchText, setSearchText }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       {/* SIDEBAR */}
-      <div style={{ width: '240px', minWidth: '240px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(180px, 18vw, 240px)', minWidth: '180px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
         <div>
           <div style={{ padding: '30px 25px 20px 25px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               <div style={{ fontSize: '48px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
               <div>
                 <h2 style={{ fontSize: '16px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px', color: 'white' }}>HEALTHCARE<br/>EMR</h2>
+                <p style={{ fontSize: '10px', opacity: 0.5, margin: '3px 0 0 0' }}>Cloud-based System</p>
               </div>
             </div>
-            <p style={{ fontSize: '11px', color: 'white', margin: 0, lineHeight: '1.4' }}>Empowering Healthcare<br/>through Data</p>
           </div>
           <nav style={{ marginTop: '10px' }}>
             {navItems.map((item) => (
@@ -1429,7 +1521,7 @@ const LabLayout = ({ children, searchText, setSearchText }) => {
             ))}
           </nav>
         </div>
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
@@ -1446,16 +1538,16 @@ const LabLayout = ({ children, searchText, setSearchText }) => {
             <input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: '420px', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }}
+              style={{ width: 'clamp(200px, 30vw, 420px)', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }}
               placeholder="Search for patient name, ID or date..."
             />
           </div>
           <div style={{ position: 'absolute', right: '50px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>Lab Technician</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)' }}>
           {children}
         </div>
       </div>
@@ -1586,18 +1678,18 @@ const LabQueue = ({ searchText }) => {
       )}
 
       <div>
-        <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '35px' }}>Laboratory Test Requests</h1>
+        <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', marginBottom: '35px' }}>Laboratory Test Requests</h1>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Pending Tests',   v: loading ? '—' : labData.filter(l => l.s.toLowerCase() === 'pending').length.toString(),   tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
             { l: 'Completed Today', v: loading ? '—' : labData.filter(l => l.s.toLowerCase() === 'completed').length.toString(), tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
             { l: 'Urgent/Critical', v: loading ? '—' : labData.filter(l => l.pLabel === 'Emergency').length.toString(),          tc: '#EF4444', bg: '#FEF2F2', bc: '#FECACA' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-              <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
@@ -1650,7 +1742,7 @@ const LabQueue = ({ searchText }) => {
       {/* View Details Modal */}
       {showViewModal && selectedPatient && (
         <div onClick={() => setShowViewModal(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
             {/* Header */}
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -1686,7 +1778,7 @@ const LabQueue = ({ searchText }) => {
       {/* Enter Results Modal */}
       {showResultModal && selectedPatient && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
             {/* Modal Header */}
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9' }}>
@@ -1783,15 +1875,15 @@ const LabDashboard = () => {
     <div>
       <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '10px' }}>Lab Technician Dashboard</h1>
       <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '35px', fontWeight: '500' }}>Welcome, {labName}. Here's your pending work for today.</p>
-      <div style={{ display: 'flex', gap: '25px', marginBottom: '40px' }}>
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
         {[
           { l: 'Pending Lab Requests', v: stats.pending,   tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
           { l: 'Completed Today',      v: stats.completed, tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           { l: 'Urgent / Critical',    v: stats.urgent,    tc: '#EF4444', bg: '#FEF2F2', bc: '#FECACA' },
         ].map((c, i) => (
-          <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+          <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
             <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-            <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+            <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
           </div>
         ))}
       </div>
@@ -1819,12 +1911,13 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       {/* SIDEBAR */}
-      <div style={{ width: '240px', minWidth: '240px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(180px, 18vw, 240px)', minWidth: '180px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
         <div>
           <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
+              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -1835,7 +1928,7 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
             ))}
           </nav>
         </div>
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
@@ -1849,14 +1942,14 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
         <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 50px', backgroundColor: 'white', borderBottom: '1px solid #E2E8F0', position: 'relative' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: '420px', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search for patient name, ID or date..." />
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: 'clamp(200px, 30vw, 420px)', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search for patient name, ID or date..." />
           </div>
           <div style={{ position: 'absolute', right: '50px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>Nurse Ama Mensah</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)' }}>
           {children}
         </div>
       </div>
@@ -1867,9 +1960,47 @@ const NurseLayout = ({ children, searchText, setSearchText }) => {
 // --- NURSE DASHBOARD ---
 const NurseDashboard = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user  = JSON.parse(localStorage.getItem('user') || '{}');
   const token = localStorage.getItem('token');
+  const nurseName = localStorage.getItem('display_name') || user.name || user.full_name || 'Nurse';
+
   const [stats, setStats] = React.useState({ waiting: '—', captured: '—', emergency: '—' });
+
+  // Register patient modal
+  const [showRegisterModal, setShowRegisterModal] = React.useState(false);
+  const [firstName, setFirstName] = React.useState('');
+  const [lastName, setLastName]   = React.useState('');
+  const [email, setEmail]         = React.useState('');
+  const [dob, setDob]             = React.useState('');
+  const [phone, setPhone]         = React.useState('');
+  const [gender, setGender]       = React.useState('');
+  const [dateOfReg, setDateOfReg] = React.useState('');
+  const [submitting, setSubmitting]     = React.useState(false);
+  const [toastMessage, setToastMessage] = React.useState('');
+  const [toastType, setToastType]       = React.useState('success');
+
+  const triggerToast = (msg, type = 'success') => { setToastMessage(msg); setToastType(type); setTimeout(() => setToastMessage(''), 3500); };
+  const resetForm = () => { setFirstName(''); setLastName(''); setEmail(''); setDob(''); setPhone(''); setGender(''); setDateOfReg(''); };
+
+  const handleRegister = async () => {
+    if (!firstName || !lastName) { triggerToast('Please enter first and last name.', 'error'); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/patients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, email, date_of_birth: dob, phone, gender, registration_date: dateOfReg }),
+      });
+      if (res.ok) {
+        setShowRegisterModal(false);
+        resetForm();
+        triggerToast(`${firstName} ${lastName} registered successfully!`);
+      } else {
+        triggerToast('Failed to register patient. Please try again.', 'error');
+      }
+    } catch { triggerToast('Network error. Patient not registered.', 'error'); }
+    finally { setSubmitting(false); }
+  };
 
   React.useEffect(() => {
     const fetchStats = async () => {
@@ -1877,37 +2008,100 @@ const NurseDashboard = () => {
         const apptRes = await fetch(`${BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } });
         const apptData = await apptRes.json();
         const appts = Array.isArray(apptData) ? apptData : (apptData.appointments || apptData.data || []);
-        const waiting   = appts.filter(a => (a.status || '').toLowerCase() === 'pending').length;
-        const captured  = appts.filter(a => (a.vitals_status || '').toLowerCase() === 'captured').length;
-        const emergency = appts.filter(a => (a.triage_level || a.priority || '').toString().includes('1')).length;
-        setStats({ waiting: waiting.toString(), captured: captured.toString(), emergency: emergency.toString() });
+        setStats({
+          waiting:   appts.filter(a => (a.status || '').toLowerCase() === 'pending').length.toString(),
+          captured:  appts.filter(a => (a.vitals_status || '').toLowerCase() === 'captured').length.toString(),
+          emergency: appts.filter(a => (a.triage_level || a.priority || '').toString().includes('1')).length.toString(),
+        });
       } catch { setStats({ waiting: '—', captured: '—', emergency: '—' }); }
     };
     fetchStats();
   }, []);
 
-  const nurseName = user.name || user.full_name || 'Nurse Ama Mensah';
-
   return (
     <div>
-      <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '10px' }}>Nurse Dashboard</h1>
+      {toastMessage && (
+        <div style={{ position: 'fixed', top: '25px', left: '50%', transform: 'translateX(-50%)', backgroundColor: toastType === 'error' ? '#FEF2F2' : 'white', color: toastType === 'error' ? '#DC2626' : '#16A34A', padding: '14px 24px', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999, fontWeight: '700', fontSize: '14px', border: toastType === 'error' ? '1px solid #FECACA' : '1px solid #BBF7D0' }}>
+          <span style={{ fontSize: '18px' }}>{toastType === 'error' ? '🚫' : '✅'}</span> {toastMessage}
+        </div>
+      )}
+
+      {/* Header row with title and Register button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+        <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>Nurse Dashboard</h1>
+        <button onClick={() => setShowRegisterModal(true)} style={{ padding: '12px 24px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Register New Patient</button>
+      </div>
       <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '35px', fontWeight: '500' }}>Welcome, {nurseName}. Here's your queue for today.</p>
-      <div style={{ display: 'flex', gap: '25px', marginBottom: '40px' }}>
+
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
         {[
           { l: 'Patients Waiting',      v: stats.waiting,   tc: '#1E293B', bg: 'white',   bc: '#E2E8F0' },
           { l: 'Vitals Captured Today', v: stats.captured,  tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           { l: 'Emergency Triage',      v: stats.emergency, tc: '#EF4444', bg: '#FEF2F2', bc: '#FECACA' },
         ].map((c, i) => (
-          <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+          <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
             <p style={{ color: '#64748B', fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-            <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+            <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
           </div>
         ))}
       </div>
+
       <div style={{ display: 'flex', gap: '15px' }}>
         <button onClick={() => navigate('/nurse-triage')} style={{ padding: '14px 28px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>Go to Triage Queue →</button>
         <button onClick={() => navigate('/nurse-patients')} style={{ padding: '14px 28px', backgroundColor: 'white', color: '#1E293B', border: '1px solid #E2E8F0', borderRadius: '10px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>View Patients →</button>
       </div>
+
+      {/* Register New Patient Modal */}
+      {showRegisterModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+            <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#1E293B' }}>Register New Patient</h3>
+              <span onClick={() => { setShowRegisterModal(false); resetForm(); }} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '20px', color: '#64748B' }}>×</span>            </div>
+            <div style={{ padding: '24px 32px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>First Name *</label>
+                  <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="e.g. Kwame" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Last Name *</label>
+                  <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="e.g. Mensah" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Email Address</label>
+                <input value={email} onChange={e => setEmail(e.target.value)} type="email" placeholder="e.g. kwame@email.com" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Date of Birth</label>
+                <input value={dob} onChange={e => setDob(e.target.value)} type="date" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Phone Number</label>
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="e.g. 0244123456" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Gender</label>
+                <select value={gender} onChange={e => setGender(e.target.value)} style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', backgroundColor: 'white', color: gender ? '#1E293B' : '#94A3B8' }}>
+                  <option value="">Select...</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Date of Registration</label>
+                <input value={dateOfReg} onChange={e => setDateOfReg(e.target.value)} type="date" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+              </div>
+            </div>
+            <div style={{ padding: '0 32px 24px 32px', display: 'flex', justifyContent: 'flex-end', gap: '14px' }}>
+              <button onClick={() => { setShowRegisterModal(false); resetForm(); }} style={{ padding: '12px 24px', backgroundColor: 'white', color: '#64748B', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+              <button onClick={handleRegister} disabled={submitting} style={{ padding: '12px 28px', backgroundColor: submitting ? '#94A3B8' : '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', cursor: submitting ? 'not-allowed' : 'pointer' }}>{submitting ? 'Registering...' : 'Register Patient'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1953,7 +2147,7 @@ const NursePatients = ({ searchText }) => {
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
       <div>
-        <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '35px' }}>Patient Database</h1>
+        <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', marginBottom: '35px' }}>Patient Database</h1>
         <div style={{ display: 'grid', gridTemplateColumns: gridTemplate, padding: '14px 25px', backgroundColor: '#F8FAFC', borderRadius: '10px', marginBottom: '4px', color: '#64748B', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px' }}>
           <div>PATIENT NAME</div><div>PATIENT ID</div><div>DIAGNOSIS</div><div>STATUS</div><div>ACTION</div>
         </div>
@@ -2177,7 +2371,6 @@ const NurseTriage = ({ searchText }) => {
   const [lastName, setLastName]     = React.useState('');
   const [dob, setDob]               = React.useState('');
   const [phone, setPhone]           = React.useState('');
-  const [email, setEmail]           = React.useState('');
   const [gender, setGender]         = React.useState('');
   const [dateOfReg, setDateOfReg]   = React.useState('');
 
@@ -2222,7 +2415,7 @@ const NurseTriage = ({ searchText }) => {
   const gridTemplate = '26% 18% 24% 18% 14%';
 
   const resetVitals   = () => { setTemp(''); setWeight(''); setBp(''); setHr(''); setNotes(''); };
-  const resetRegister = () => { setFirstName(''); setLastName(''); setDob(''); setPhone(''); setEmail(''); setGender(''); setDateOfReg(''); };
+  const resetRegister = () => { setFirstName(''); setLastName(''); setDob(''); setPhone(''); setGender(''); setDateOfReg(''); };
 
   // Save vitals → POST /api/medical-records
   const handleSaveVitals = async () => {
@@ -2266,12 +2459,10 @@ const NurseTriage = ({ searchText }) => {
       const res = await fetch(`${BASE_URL}/api/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ full_name: `${firstName} ${lastName}`, email: email, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
+        body: JSON.stringify({ first_name: firstName, last_name: lastName, date_of_birth: dob, phone: phone, gender, registration_date: dateOfReg }),
       });
       if (res.ok) {
         triggerToast(`${firstName} ${lastName} registered successfully!`);
-      } else if (res.status === 403) {
-        triggerToast('Patient registration is Admin-only. Please contact your Admin.', 'error');
       } else {
         triggerToast('Failed to register patient. Please try again.', 'error');
       }
@@ -2292,20 +2483,19 @@ const NurseTriage = ({ searchText }) => {
       <div>
         {/* Page Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
-          <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', margin: 0 }}>Triage & Vitals Queue</h1>
-          <button onClick={() => setShowRegisterModal(true)} style={{ padding: '12px 24px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>Register New Patient</button>
+          <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>Triage & Vitals Queue</h1>
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Patients Waiting',      v: loading ? '—' : filtered.length.toString(),                                                   tc: '#1E293B', bg: 'white',   bc: '#E2E8F0' },
             { l: 'Vitals Captured Today', v: loading ? '—' : queue.filter(p => p.s === 'Captured').length.toString(),                       tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
             { l: 'Emergency Triage',      v: loading ? '—' : queue.filter(p => p.pLabel === 'Emergency').length.toString(),                 tc: '#EF4444', bg: '#FEF2F2', bc: '#FECACA' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: '#64748B', fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-              <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
@@ -2343,7 +2533,7 @@ const NurseTriage = ({ searchText }) => {
       {/* Vitals Entry Modal */}
       {showVitalsModal && selectedPatient && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             {/* Header */}
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Record Patient Vitals - {selectedPatient.n}</h3>
@@ -2381,7 +2571,7 @@ const NurseTriage = ({ searchText }) => {
       {/* Register New Patient Modal */}
       {showRegisterModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(500px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
             {/* Header */}
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9' }}>
@@ -2413,11 +2603,6 @@ const NurseTriage = ({ searchText }) => {
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Phone Number</label>
                 <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 0234564765" style={{ width: '100%', padding: '13px 15px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Email Address</label>
-                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. patient@email.com" style={{ width: '100%', padding: '13px 15px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
               </div>
 
               {/* Gender */}
@@ -2457,82 +2642,139 @@ const NurseTriage = ({ searchText }) => {
 // --- NURSE SCHEDULE VIEW (read-only doctor schedule) ---
 const NurseSchedule = ({ searchText }) => {
   const gridTemplate = '22% 15% 18% 17% 14% 14%';
-  const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+  const user  = JSON.parse(localStorage.getItem('user') || '{}');
+  const nurseName = localStorage.getItem('display_name') || user.name || 'Nurse';
 
   const [showVitalsModal, setShowVitalsModal] = React.useState(false);
   const [selectedPatient, setSelectedPatient] = React.useState(null);
-  const [toastMessage, setToastMessage] = React.useState('');
-  const [toastType, setToastType] = React.useState('success');
-  const [temp, setTemp] = React.useState('');
+  const [toastMessage, setToastMessage]       = React.useState('');
+  const [toastType, setToastType]             = React.useState('success');
+  const [submitting, setSubmitting]           = React.useState(false);
+  const [temp, setTemp]     = React.useState('');
   const [weight, setWeight] = React.useState('');
-  const [bp, setBp] = React.useState('');
-  const [hr, setHr] = React.useState('');
-  const [notes, setNotes] = React.useState('');
+  const [bp, setBp]         = React.useState('');
+  const [hr, setHr]         = React.useState('');
+  const [notes, setNotes]   = React.useState('');
 
-  const [scheduleData, setScheduleData] = React.useState([
-    { n: 'Kwame Mensah', t: '09:00 AM', r: 'Follow-up',  pl: 'P1', pLabel: 'Emergency', pbg: '#FEE2E2', ptc: '#DC2626', v: 'Captured', vbg: '#DCFCE7', vtc: '#16A34A', ready: true },
-    { n: 'John Danso',   t: '09:30 AM', r: 'Check-up',   pl: 'P2', pLabel: 'Urgent',    pbg: '#FEF3C7', ptc: '#B45309', v: 'Captured', vbg: '#DCFCE7', vtc: '#16A34A', ready: true },
-    { n: 'Sarah Mensah', t: '11:00 AM', r: 'Lab Review', pl: 'P3', pLabel: 'Routine',   pbg: '#DCFCE7', ptc: '#16A34A', v: 'Pending',  vbg: '#FEF3C7', vtc: '#B45309', ready: false },
-    { n: 'Kevin Oto',    t: '02:00 PM', r: 'Follow-up',  pl: 'P2', pLabel: 'Urgent',    pbg: '#FEF3C7', ptc: '#B45309', v: 'Pending',  vbg: '#FEF3C7', vtc: '#B45309', ready: false },
-  ]);
-
-  const filtered = scheduleData.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase()));
+  const [scheduleData, setScheduleData] = React.useState([]);
+  const [loading, setLoading]           = React.useState(true);
 
   const triggerToast = (msg, type = 'success') => {
-    setToastMessage(msg);
-    setToastType(type);
+    setToastMessage(msg); setToastType(type);
     setTimeout(() => setToastMessage(''), 3500);
   };
 
   const resetVitals = () => { setTemp(''); setWeight(''); setBp(''); setHr(''); setNotes(''); };
 
-  const handleSave = () => {
-    setScheduleData(prev => prev.map(p =>
-      p.n === selectedPatient.n
-        ? { ...p, v: 'Captured', vbg: '#DCFCE7', vtc: '#16A34A', ready: true }
-        : p
-    ));
-    setShowVitalsModal(false);
-    resetVitals();
-    triggerToast(`✅ ${selectedPatient.n} prepared and queued for Dr. Bright Amofa`);
+  // Priority styling
+  const priorityStyle = (tl) => {
+    const p = String(tl || 'P3').toUpperCase();
+    if (p.includes('1') || p === 'EMERGENCY') return { pl: 'P1', pLabel: 'Emergency', pbg: '#FEE2E2', ptc: '#DC2626' };
+    if (p.includes('2') || p === 'URGENT')    return { pl: 'P2', pLabel: 'Urgent',    pbg: '#FEF3C7', ptc: '#B45309' };
+    return { pl: 'P3', pLabel: 'Routine', pbg: '#DCFCE7', ptc: '#16A34A' };
+  };
+
+  React.useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${BASE_URL}/api/appointments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : (data.appointments || data.data || []);
+          setScheduleData(list.map(a => ({
+            n:       a.patient_name || (a.patient && a.patient.name) || 'Unknown',
+            id:      a.patient_id   || (a.patient && a.patient.id),
+            appt_id: a.id || a._id,
+            t:       a.appointment_time || a.appointment_date || '—',
+            r:       a.reason || a.reason_for_visit || '—',
+            v:       (a.vitals_status || '').toLowerCase() === 'captured' ? 'Captured' : 'Pending',
+            vbg:     (a.vitals_status || '').toLowerCase() === 'captured' ? '#DCFCE7' : '#FEF3C7',
+            vtc:     (a.vitals_status || '').toLowerCase() === 'captured' ? '#16A34A' : '#B45309',
+            ready:   (a.vitals_status || '').toLowerCase() === 'captured',
+            ...priorityStyle(a.triage_level || a.priority),
+          })));
+        }
+      } catch { } finally { setLoading(false); }
+    };
+    fetchSchedule();
+  }, []);
+
+  const filtered = scheduleData.filter(p => p.n.toLowerCase().includes(searchText.toLowerCase()));
+
+  // Save vitals → POST /api/medical-records
+  const handleSave = async () => {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${BASE_URL}/api/medical-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          patient_id:     selectedPatient.id,
+          vitals: { temperature: temp, weight, blood_pressure: bp, heart_rate: hr },
+          clinical_notes: notes,
+        }),
+      });
+      if (res.ok && selectedPatient.appt_id) {
+        await fetch(`${BASE_URL}/api/appointments/${selectedPatient.appt_id}/status`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status: 'ready', vitals_status: 'captured' }),
+        });
+      }
+      setScheduleData(prev => prev.map(p =>
+        p.n === selectedPatient.n
+          ? { ...p, v: 'Captured', vbg: '#DCFCE7', vtc: '#16A34A', ready: true }
+          : p
+      ));
+      setShowVitalsModal(false);
+      resetVitals();
+      triggerToast(`${selectedPatient.n} prepared and queued for doctor`);
+    } catch {
+      triggerToast('Failed to save vitals.', 'error');
+    } finally { setSubmitting(false); }
   };
 
   return (
     <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
 
-      {/* Toast */}
       {toastMessage && (
-        <div style={{ position: 'fixed', top: '25px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'white', color: '#16A34A', padding: '14px 24px', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999, fontWeight: '700', fontSize: '14px', border: '1px solid #BBF7D0' }}>
-          {toastMessage}
+        <div style={{ position: 'fixed', top: '25px', left: '50%', transform: 'translateX(-50%)', backgroundColor: toastType === 'error' ? '#FEF2F2' : 'white', color: toastType === 'error' ? '#DC2626' : '#16A34A', padding: '14px 24px', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999, fontWeight: '700', fontSize: '14px', border: toastType === 'error' ? '1px solid #FECACA' : '1px solid #BBF7D0' }}>
+          <span style={{ fontSize: '18px' }}>{toastType === 'error' ? '🚫' : '✅'}</span> {toastMessage}
         </div>
       )}
 
       <div>
         <div style={{ marginBottom: '35px' }}>
           <div style={{ fontSize: '28px', marginBottom: '5px' }}>👋</div>
-          <h1 style={{ fontSize: '32px', fontWeight: '800', margin: 0, color: '#1E293B' }}>Doctor's Schedule - Dr. Bright Amofa</h1>
+          <h1 style={{ fontSize: '32px', fontWeight: '800', margin: 0, color: '#1E293B' }}>Patient Queue — {nurseName}</h1>
+          <p style={{ color: '#64748B', fontSize: '14px', margin: '6px 0 0 0', fontWeight: '500' }}>Patients waiting for vitals to be captured today</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '45px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '45px', flexWrap: 'wrap' }}>
           {[
-            { l: 'Pending Consultations', v: scheduleData.filter(p => !p.ready).length.toString(), bg: '#EFF6FF', tc: '#3B82F6', bc: '#BFDBFE' },
-            { l: 'Completed Today',       v: '22', bg: '#F0FDF4', tc: '#22C55E', bc: '#BBF7D0' },
-            { l: 'High Priority Cases',   v: '4',  bg: '#FEF2F2', tc: '#EF4444', bc: '#FECACA' },
+            { l: 'Pending Vitals',    v: loading ? '—' : filtered.filter(p => !p.ready).length.toString(), bg: '#EFF6FF', tc: '#3B82F6', bc: '#BFDBFE' },
+            { l: 'Ready for Doctor',  v: loading ? '—' : filtered.filter(p => p.ready).length.toString(),  bg: '#F0FDF4', tc: '#22C55E', bc: '#BBF7D0' },
+            { l: 'High Priority',     v: loading ? '—' : filtered.filter(p => p.pLabel === 'Emergency').length.toString(), bg: '#FEF2F2', tc: '#EF4444', bc: '#FECACA' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: '#64748B', fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-              <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
 
-        {/* Table Header */}
         <div style={{ display: 'grid', gridTemplateColumns: gridTemplate, padding: '14px 25px', backgroundColor: '#F8FAFC', borderRadius: '10px', marginBottom: '8px', color: '#64748B', fontSize: '12px', fontWeight: '800', letterSpacing: '0.5px' }}>
           <div>PATIENT NAME</div><div>APPOINTMENT TIME</div><div>REASON FOR VISIT</div><div>TRIAGE LEVEL</div><div>VITALS STATUS</div><div>ACTION</div>
         </div>
 
-        {/* Table Rows */}
-        {filtered.map((p, i) => (
+        {loading && <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '14px' }}>Loading queue...</div>}
+        {!loading && filtered.length === 0 && <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8', fontSize: '14px' }}>No patients in queue.</div>}
+
+        {!loading && filtered.map((p, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: gridTemplate, alignItems: 'center', backgroundColor: 'white', padding: '20px 25px', borderRadius: '12px', marginBottom: '10px', border: '1px solid #E2E8F0', fontSize: '14px', fontWeight: '700' }}>
             <div>{p.n}</div>
             <div style={{ color: '#64748B' }}>{p.t}</div>
@@ -2564,7 +2806,7 @@ const NurseSchedule = ({ searchText }) => {
       {/* Vitals Entry Modal */}
       {showVitalsModal && selectedPatient && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B' }}>Record Patient Vitals - {selectedPatient.n}</h3>
             </div>
@@ -2615,12 +2857,13 @@ const PharmLayout = ({ children, searchText, setSearchText }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       {/* SIDEBAR */}
-      <div style={{ width: '240px', minWidth: '240px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(180px, 18vw, 240px)', minWidth: '180px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
         <div>
           <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
+              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -2631,7 +2874,7 @@ const PharmLayout = ({ children, searchText, setSearchText }) => {
             ))}
           </nav>
         </div>
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
@@ -2644,14 +2887,14 @@ const PharmLayout = ({ children, searchText, setSearchText }) => {
         <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 50px', backgroundColor: 'white', borderBottom: '1px solid #E2E8F0', position: 'relative' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: '420px', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search for patient, order ID or medication..." />
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: 'clamp(200px, 30vw, 420px)', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search for patient, order ID or medication..." />
           </div>
           <div style={{ position: 'absolute', right: '50px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>Pham. Ann Ntim</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)' }}>
           {children}
         </div>
       </div>
@@ -2728,7 +2971,7 @@ const PharmDashboard = ({ searchText }) => {
           medication_name: selectedRx.med,
           batch_number:    batch,
           quantity:        qty,
-          dispensed_by:    user.name || user.full_name || 'Pharmacist',
+          dispensed_by:    user.full_name || user.name || 'Pharmacist',
         }),
       });
       if (res.ok) {
@@ -2739,9 +2982,14 @@ const PharmDashboard = ({ searchText }) => {
         setBatch(''); setQty('');
         triggerToast(`${selectedRx.med} dispensed to ${selectedRx.n} successfully!`);
       } else {
-        triggerToast('Failed to dispense. Please try again.', 'error');
+        const errData = await res.json().catch(() => ({}));
+        console.error('Dispense error:', res.status, errData);
+        triggerToast(`Failed to dispense: ${errData.message || res.status}`, 'error');
       }
-    } catch { triggerToast('Network error. Dispense not recorded.', 'error'); }
+    } catch (err) {
+      console.error('Network error:', err);
+      triggerToast('Network error. Dispense not recorded.', 'error');
+    }
     finally { setSubmitting(false); }
   };
 
@@ -2759,20 +3007,20 @@ const PharmDashboard = ({ searchText }) => {
 
       <div>
         <div style={{ marginBottom: '35px' }}>
-          <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', margin: 0 }}>Pharmacy Dashboard</h1>
+          <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>Pharmacy Dashboard</h1>
           <p style={{ color: '#64748B', fontSize: '14px', marginTop: '8px', fontWeight: '500' }}>Welcome, {pharmName}. Here are today's prescriptions.</p>
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Total Prescriptions', v: loading ? '—' : prescriptions.length.toString(),                                              tc: '#1E293B', bg: 'white',   bc: '#E2E8F0' },
             { l: 'Pending Pickup',      v: loading ? '—' : prescriptions.filter(p => p.s !== 'Dispensed').length.toString(),             tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
             { l: 'Dispensed Today',     v: loading ? '—' : prescriptions.filter(p => p.s === 'Dispensed').length.toString(),             tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: c.tc === '#1E293B' ? '#64748B' : c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-              <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
@@ -2807,7 +3055,7 @@ const PharmDashboard = ({ searchText }) => {
       {/* Dispense Modal */}
       {showDispenseModal && selectedRx && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '28px 32px 24px 32px', borderBottom: '1px solid #F1F5F9' }}>
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>Dispense Prescription</h3>
             </div>
@@ -3030,7 +3278,16 @@ const PharmInventory = ({ searchText }) => {
       const res = await fetch(`${BASE_URL}/api/inventory`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ medicine_name: medName, batch_number: batchNo, quantity: parseInt(quantity), expiry_date: expiry, category: 'General' }),
+        body: JSON.stringify({
+          medicine_name:   medName,
+          batch_number:    batchNo,
+          batch_no:        batchNo,
+          quantity:        parseInt(quantity),
+          expiry_date:     expiry,
+          expiry:          expiry,
+          category:        'General',
+          status:          'in_stock',
+        }),
       });
       if (res.ok) {
         const newItem = { name: medName, cat: 'General', stock: `${quantity} Units`, exp: expiry || 'N/A', ...statusStyle('in stock', parseInt(quantity)) };
@@ -3039,9 +3296,18 @@ const PharmInventory = ({ searchText }) => {
         setMedName(''); setBatchNo(''); setQuantity(''); setExpiry('');
         triggerToast(`${medName} batch added to inventory!`);
       } else {
-        triggerToast('Failed to add batch. Please try again.', 'error');
+        const errData = await res.json().catch(() => ({}));
+        console.error('Add batch error:', res.status, errData);
+        if (res.status === 403) {
+          triggerToast('Only Pharmacists can add inventory batches.', 'error');
+        } else {
+          triggerToast(`Failed to add batch: ${errData.message || res.status}`, 'error');
+        }
       }
-    } catch { triggerToast('Network error. Batch not added.', 'error'); }
+    } catch (err) {
+      console.error('Network error:', err);
+      triggerToast('Network error. Batch not added.', 'error');
+    }
     finally { setSubmitting(false); }
   };
 
@@ -3058,20 +3324,20 @@ const PharmInventory = ({ searchText }) => {
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
-          <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', margin: 0 }}>Medicine Inventory</h1>
+          <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>Medicine Inventory</h1>
           <button onClick={() => setShowBatchModal(true)} style={{ padding: '12px 24px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>+ Add New Batch</button>
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Total Items',   v: loading ? '—' : summary.total,      tc: '#1E293B', bg: 'white',   bc: '#E2E8F0' },
             { l: 'Out of Stock',  v: loading ? '—' : summary.outOfStock, tc: '#DC2626', bg: '#FEF2F2', bc: '#FECACA' },
             { l: 'Low Stock',     v: loading ? '—' : summary.lowStock,   tc: '#B45309', bg: '#FFFBEB', bc: '#FDE68A' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: c.tc === '#1E293B' ? '#64748B' : c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
-              <h2 style={{ fontSize: '52px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
+              <h2 style={{ fontSize: 'clamp(32px, 4vw, 52px)', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
           ))}
         </div>
@@ -3099,7 +3365,7 @@ const PharmInventory = ({ searchText }) => {
       {/* Add New Batch Modal */}
       {showBatchModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '460px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(460px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>Add New Medication Batch</h3>
             </div>
@@ -3141,12 +3407,13 @@ const PatientPortalLayout = ({ children, searchText, setSearchText }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       {/* SIDEBAR */}
-      <div style={{ width: '240px', minWidth: '240px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(180px, 18vw, 240px)', minWidth: '180px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
         <div>
           <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
+              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3157,7 +3424,7 @@ const PatientPortalLayout = ({ children, searchText, setSearchText }) => {
             ))}
           </nav>
         </div>
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
@@ -3171,14 +3438,14 @@ const PatientPortalLayout = ({ children, searchText, setSearchText }) => {
         <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 50px', backgroundColor: 'white', borderBottom: '1px solid #E2E8F0', position: 'relative' }}>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
-            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: '420px', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search your health records..." />
+            <input value={searchText} onChange={(e) => setSearchText(e.target.value)} style={{ width: 'clamp(200px, 30vw, 420px)', padding: '12px 15px 12px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', fontSize: '13px' }} placeholder="Search your health records..." />
           </div>
           <div style={{ position: 'absolute', right: '50px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>Kwame Mensah</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
             <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
           </div>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)' }}>
           {children}
         </div>
       </div>
@@ -3354,13 +3621,13 @@ const PatientDashboard = () => {
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Upcoming Visits',  v: loading ? '—' : `${upcomingCount} Appointment${upcomingCount !== 1 ? 's' : ''}`, tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
             { l: 'Active Meds',      v: loading ? '—' : `${activeMeds} Prescription${activeMeds !== 1 ? 's' : ''}`,      tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
             { l: 'New Reports',      v: loading ? '—' : newLabResults > 0 ? `${newLabResults} Lab Result${newLabResults !== 1 ? 's' : ''}` : 'No New Reports', tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
               <h2 style={{ fontSize: '28px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
@@ -3396,7 +3663,7 @@ const PatientDashboard = () => {
       {/* Schedule Appointment Modal */}
       {showBookingModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '500px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(500px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
 
             {/* Header */}
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -3460,7 +3727,7 @@ const PatientDashboard = () => {
       {/* Appointment Confirmed Success Modal */}
       {showSuccessModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '480px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '40px 40px 32px 40px', position: 'relative' }}>
+          <div style={{ width: 'min(480px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', padding: '40px 40px 32px 40px', position: 'relative' }}>
 
             {/* X close */}
             <span onClick={() => setShowSuccessModal(false)} style={{ position: 'absolute', top: '20px', right: '24px', cursor: 'pointer', fontWeight: '800', fontSize: '20px', color: '#64748B' }}>X</span>
@@ -3505,12 +3772,13 @@ const AdminLayout = ({ children, searchText, setSearchText }) => {
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw', backgroundColor: '#F4F7F6', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
       {/* SIDEBAR */}
-      <div style={{ width: '240px', minWidth: '240px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(180px, 18vw, 240px)', minWidth: '180px', backgroundColor: '#1E293B', color: 'white', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden' }}>
         <div>
           <div style={{ padding: '32px 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{ fontSize: '50px', fontWeight: '300', lineHeight: '0.6', color: 'white', flexShrink: 0 }}>+</div>
             <div>
               <h2 style={{ fontSize: '18px', margin: 0, fontWeight: '800', lineHeight: '1.1', letterSpacing: '0.5px' }}>HEALTHCARE<br/>EMR</h2>
+              <p style={{ fontSize: '10px', opacity: 0.5, margin: 0 }}>Cloud-based System</p>
             </div>
           </div>
           <nav style={{ marginTop: '10px' }}>
@@ -3521,7 +3789,7 @@ const AdminLayout = ({ children, searchText, setSearchText }) => {
             ))}
           </nav>
         </div>
-        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+        <div onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/logout'); }} style={{ padding: '25px 30px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '15px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
           </svg>
@@ -3531,7 +3799,14 @@ const AdminLayout = ({ children, searchText, setSearchText }) => {
 
       {/* CONTENT */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '40px 50px' }}>
+        {/* Header */}
+        <div style={{ height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 50px', backgroundColor: 'white', borderBottom: '1px solid #E2E8F0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>{localStorage.getItem('display_name') || JSON.parse(localStorage.getItem('user') || '{}').full_name || JSON.parse(localStorage.getItem('user') || '{}').name || '—'}</span>
+            <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#94A3B8' }} />
+          </div>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(20px, 3vw, 50px) clamp(20px, 4vw, 50px)' }}>
           {children}
         </div>
       </div>
@@ -3577,14 +3852,14 @@ const AdminDashboard = () => {
     <div>
       <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', marginBottom: '10px' }}>Admin Dashboard</h1>
       <p style={{ color: '#64748B', fontSize: '14px', marginBottom: '35px', fontWeight: '500' }}>Welcome back, {adminName}. Here's the system overview.</p>
-      <div style={{ display: 'flex', gap: '25px', marginBottom: '40px' }}>
+      <div style={{ display: 'flex', gap: '20px', marginBottom: '40px', flexWrap: 'wrap' }}>
         {[
           { l: 'Total Staff Accounts', v: stats.staff,        tc: '#1E293B', bg: 'white',   bc: '#E2E8F0' },
           { l: 'Appointments Today',   v: stats.appointments,  tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
           { l: 'Active Patients',      v: stats.patients,      tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           { l: 'Pending Reports',      v: stats.pending,       tc: '#B45309', bg: '#FFFBEB', bc: '#FDE68A' },
         ].map((c, i) => (
-          <div key={i} style={{ padding: '28px 24px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+          <div key={i} style={{ padding: 'clamp(16px, 2vw, 28px) clamp(14px, 1.8vw, 24px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '130px', border: `1px solid ${c.bc}` }}>
             <p style={{ color: '#64748B', fontWeight: '700', fontSize: '13px', margin: 0 }}>{c.l}</p>
             <h2 style={{ fontSize: '42px', fontWeight: '800', margin: '14px 0 0 0', color: c.tc }}>{c.v}</h2>
           </div>
@@ -3680,23 +3955,53 @@ const UserManagement = () => {
     if (!fullName || !email || !role || !password) { triggerToast('Please fill all fields.', 'error'); return; }
     setSubmitting(true);
     try {
+      const formattedRole = role;
+      const roleId = formattedRole === 'doctor' ? 2 : formattedRole === 'nurse' ? 3 : formattedRole === 'lab_technician' ? 4 : formattedRole === 'pharmacist' ? 5 : 1;
+      console.log('Sending to register:', { full_name: fullName, email, role_id: roleId });
       const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ full_name: fullName, email, password, role_id: role === 'doctor' ? 2 : role === 'nurse' ? 3 : role === 'lab_technician' ? 4 : role === 'pharmacist' ? 5 : 1 }), });
+        body: JSON.stringify({ full_name: fullName, email, password, role_id: roleId }),
+      });
+
+      const resData = await res.json().catch(() => ({}));
+      console.log('Register response:', res.status, resData);
+      console.log('Sent body:', { name: fullName, email, role: formattedRole, password });
+
       if (res.ok) {
-        const data = await res.json();
-        const newUser = data.user || { name: fullName, role, status: 'Active' };
-        setStaffList(prev => [...prev, { id: newUser.id || Date.now(), name: fullName, staffId: newUser.staff_id || '—', role, s: 'Active', sbg: '#DCFCE7', stc: '#16A34A' }]);
         setShowAddModal(false);
         setFullName(''); setEmail(''); setRole(''); setPassword('');
         triggerToast(`${fullName} added successfully!`);
+        // Small delay then refetch so backend has time to commit
+        setTimeout(async () => {
+          try {
+            const updatedRes = await fetch(`${BASE_URL}/api/users`, { headers: { Authorization: `Bearer ${token}` } });
+            if (updatedRes.ok) {
+              const updatedData = await updatedRes.json();
+              console.log('Refetched users raw:', updatedData);
+              const updatedList = Array.isArray(updatedData) ? updatedData : (updatedData.users || updatedData.data || []);
+              setStaffList(updatedList.map(u => ({
+                id:      u.id || u._id,
+                name:    u.name || u.full_name || `${u.first_name||''} ${u.last_name||''}`.trim() || '—',
+                staffId: u.staff_id || u.employee_id || String(u.id || '—'),
+                role:    u.role || '—',
+                s:       u.status || 'Active',
+                ...statusStyle(u.status),
+              })));
+            }
+          } catch (e) { console.error('Refetch error:', e); }
+        }, 1000);
       } else if (res.status === 403) {
         triggerToast('You do not have permission to add staff.', 'error');
+      } else if (res.status === 409 || (resData.message && resData.message.toLowerCase().includes('exist'))) {
+        triggerToast('A user with this email already exists.', 'error');
       } else {
-        triggerToast('Failed to add staff. Please try again.', 'error');
+        triggerToast(resData.message || 'Failed to add staff. Please try again.', 'error');
       }
-    } catch { triggerToast('Network error. Staff not added.', 'error'); }
+    } catch (err) {
+      console.error('Add staff error:', err);
+      triggerToast('Network error. Staff not added.', 'error');
+    }
     finally { setSubmitting(false); }
   };
 
@@ -3731,7 +4036,7 @@ const UserManagement = () => {
 
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '35px' }}>
-          <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', margin: 0 }}>User Management</h1>
+          <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>User Management</h1>
           <button onClick={() => setShowAddModal(true)} style={{ padding: '12px 22px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer', whiteSpace: 'nowrap' }}>Add Staff</button>
           <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input value={staffSearch} onChange={(e) => setStaffSearch(e.target.value)} placeholder="Search staff..." style={{ padding: '12px 40px 12px 16px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '13px', width: '220px', outline: 'none', backgroundColor: '#F8FAFC' }} />
@@ -3767,7 +4072,7 @@ const UserManagement = () => {
       {/* Add Staff Modal */}
       {showAddModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '460px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(460px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '32px 36px' }}>
               <h3 style={{ margin: '0 0 28px 0', fontSize: '20px', fontWeight: '800', color: '#1E293B', textAlign: 'center' }}>Add New Staff Member</h3>
               {[
@@ -3897,18 +4202,18 @@ const SystemLogs = () => {
       <div>
         {/* Page Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '35px' }}>
-          <h1 style={{ fontWeight: '800', fontSize: '32px', color: '#1E293B', margin: 0 }}>System Audit & Activity Logs</h1>
+          <h1 style={{ fontWeight: '800', fontSize: 'clamp(22px, 2.5vw, 32px)', color: '#1E293B', margin: 0 }}>System Audit & Activity Logs</h1>
           <button onClick={handleExport} style={{ padding: '11px 20px', backgroundColor: 'white', color: '#1E293B', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: '700', fontSize: '13px', cursor: 'pointer', marginLeft: 'auto' }}>Export CSV</button>
         </div>
 
         {/* Stat Cards */}
-        <div style={{ display: 'flex', gap: '25px', marginBottom: '50px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
           {[
             { l: 'Total Logs (24h)', v: '1,284', tc: '#3B82F6', bg: '#EFF6FF', bc: '#BFDBFE' },
             { l: 'Critical Alerts',  v: '7',     tc: '#DC2626', bg: '#FEF2F2', bc: '#FECACA' },
             { l: 'System Uptime',    v: '99.9%', tc: '#16A34A', bg: '#F0FDF4', bc: '#BBF7D0' },
           ].map((c, i) => (
-            <div key={i} style={{ padding: '30px 28px', borderRadius: '16px', backgroundColor: c.bg, flex: 1, border: `1px solid ${c.bc}` }}>
+            <div key={i} style={{ padding: 'clamp(18px, 2vw, 30px) clamp(16px, 1.8vw, 28px)', borderRadius: '16px', backgroundColor: c.bg, flex: 1, minWidth: '140px', border: `1px solid ${c.bc}` }}>
               <p style={{ color: c.tc, fontWeight: '700', fontSize: '14px', margin: 0 }}>{c.l}</p>
               <h2 style={{ fontSize: '48px', fontWeight: '800', margin: '16px 0 0 0', color: c.tc }}>{c.v}</h2>
             </div>
@@ -4215,7 +4520,7 @@ const LabResultsPage = () => {
       {/* New Prescription Modal */}
       {showPrescriptionModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '420px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(420px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '28px 32px 24px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between' }}>
               <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#3B82F6' }}>New Prescription</h3>
               <span onClick={() => setShowPrescriptionModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '20px', color: '#64748B' }}>X</span>
@@ -4247,7 +4552,7 @@ const LabResultsPage = () => {
       {/* Request Lab Modal */}
       {showLabRequestModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ width: '420px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
+          <div style={{ width: 'min(420px, 95vw)', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)', overflow: 'hidden' }}>
             <div style={{ padding: '28px 32px 20px 32px', borderBottom: '1px solid #F1F5F9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#3B82F6' }}>Request New Laboratory Test</h3>
               <span onClick={() => setShowLabRequestModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}>×</span>
@@ -4272,6 +4577,124 @@ const LabResultsPage = () => {
     </div>
   );
 };
+
+// --- LANDING PAGE (Andy's addition) ---
+const LandingPage = () => {
+  const navigate = useNavigate();
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
+      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 50px', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '30px' }}>
+            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
+            <div>
+              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
+            </div>
+          </div>
+          <p style={{ fontSize: '20px', color: 'rgba(255,255,255,0.7)', fontWeight: '400', lineHeight: '1.5', margin: 0 }}>
+            Empowering Healthcare through Data
+          </p>
+        </div>
+      </div>
+      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+        <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 12px 0' }}>Welcome</h1>
+          <p style={{ fontSize: '15px', color: '#64748B', margin: '0 0 50px 0', fontWeight: '500', lineHeight: '1.6' }}>
+            Please select how you would like to access the system.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <button onClick={() => navigate('/login')} style={{ width: '100%', padding: '20px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
+              Staff Login
+            </button>
+            <button onClick={() => navigate('/patient-login')} style={{ width: '100%', padding: '20px', backgroundColor: 'white', color: '#1E293B', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>
+              Patient Portal
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- PATIENT LOGIN PAGE (Andy's addition) ---
+const PatientLoginPage = () => {
+  const navigate = useNavigate();
+  const [email, setEmail]       = React.useState('');
+  const [password, setPassword] = React.useState('');
+  const [loading, setLoading]   = React.useState(false);
+  const [error, setError]       = React.useState('');
+
+  const handleLogin = async () => {
+    if (!email || !password) { setError('Please enter your email and password.'); return; }
+    setLoading(true); setError('');
+    try {
+      const res = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, role: 'patient' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || 'Invalid email or password.'); setLoading(false); return; }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('role', data.user.role);
+      const displayName = data.user.full_name || data.user.name || data.user.username || '';
+      localStorage.setItem('display_name', displayName);
+      navigate('/patient-dashboard');
+    } catch { setError('Network error. Please check your connection.'); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
+      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '45px 50px', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', position: 'relative', zIndex: 1, width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
+            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
+            <div>
+              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
+            </div>
+          </div>
+          <p style={{ margin: 0, fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5' }}>
+            Access your health records, appointments and prescriptions anytime.
+          </p>
+        </div>
+      </div>
+      <div style={{ flex: 1, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px', minWidth: '300px' }}>
+        <div style={{ maxWidth: '380px', width: '100%' }}>
+          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', textAlign: 'center' }}>Patient Portal</h1>
+          <p style={{ fontSize: '14px', color: '#64748B', textAlign: 'center', margin: '0 0 40px 0', fontWeight: '500' }}>Sign in to view your health records</p>
+          {error && (
+            <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
+              🚫 {error}
+            </div>
+          )}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Email Address:</label>
+            <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="e.g. abena@email.com" style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+          </div>
+          <div style={{ marginBottom: '40px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Password:</label>
+            <input type="password" value={password} onChange={(e) => { setPassword(e.target.value); setError(''); }} onKeyDown={(e) => e.key === 'Enter' && handleLogin()} placeholder="Enter your password" style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+          </div>
+          <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '18px', backgroundColor: loading ? '#94A3B8' : '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Signing in...' : 'Sign In'}
+          </button>
+          <p style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#64748B' }}>
+            Are you a staff member? <span onClick={() => navigate('/login')} style={{ color: '#3B82F6', cursor: 'pointer', fontWeight: '700' }}>Staff Login</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- LOGIN PAGE (Connected to Andy's API) ---
 const BASE_URL = 'https://emr-backend-production-5ebf.up.railway.app';
 
@@ -4320,6 +4743,10 @@ const LoginPage = () => {
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
       localStorage.setItem('role', data.user.role);
+      // Store display name explicitly trying all possible field names
+      const displayName = data.user.full_name || data.user.name || data.user.username || '';
+      localStorage.setItem('display_name', displayName);
+      console.log('Logged in user object:', data.user);
 
       // Route to the correct dashboard
       const route = roleRoutes[data.user.role] || '/dashboard';
@@ -4341,7 +4768,7 @@ const LoginPage = () => {
     <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
 
       {/* LEFT PANEL — dark branded side */}
-      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '45px 50px', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(300px, 50%, 700px)', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '45px 50px', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
 
@@ -4350,16 +4777,17 @@ const LoginPage = () => {
             <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
             <div>
               <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+              <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
             </div>
           </div>
-          <p style={{ margin: 0, fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
+          <p style={{ margin: 0, fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', textAlign: 'left' }}>
             Empowering Healthcare through Data
           </p>
         </div>
       </div>
 
       {/* RIGHT PANEL — login form */}
-      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+      <div style={{ flex: 1, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '300px', padding: '60px' }}>
         <div style={{ maxWidth: '380px', width: '100%' }}>
           <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 40px 0', textAlign: 'center' }}>Staff Sign-In</h1>
 
@@ -4383,7 +4811,7 @@ const LoginPage = () => {
               <option value="lab_technician">Lab Technician</option>
               <option value="nurse">Nurse</option>
               <option value="pharmacist">Pharmacist</option>
-              
+              <option value="patient">Patient</option>
             </select>
           </div>
 
@@ -4427,193 +4855,6 @@ const LoginPage = () => {
   );
 };
 
-// --- PATIENT LOGIN PAGE ---
-const PatientLoginPage = () => {
-  const navigate = useNavigate();
-  const [email, setEmail] = React.useState('');
-  const [password, setPassword] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState('');
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please enter your email and password.');
-      return;
-    }
-    setLoading(true);
-    setError('');
-
-    try {
-      const res = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, role: 'patient' }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || 'Invalid email or password. Please try again.');
-        setLoading(false);
-        return;
-      }
-
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
-      localStorage.setItem('role', data.user.role);
-
-      navigate('/patient-dashboard');
-
-    } catch (err) {
-      setError('Network error. Please check your connection and try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleLogin();
-  };
-
-  return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
-
-      {/* LEFT PANEL */}
-      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-start', padding: '45px 50px', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
-
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', position: 'relative', zIndex: 1, width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '24px' }}>
-            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
-            <div>
-              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-            </div>
-          </div>
-          <p style={{ margin: '20px 0 0 0', fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5' }}>
-            Access your health records, appointments and prescriptions anytime.
-          </p>
-        </div>
-      </div>
-
-      {/* RIGHT PANEL */}
-      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
-        <div style={{ maxWidth: '380px', width: '100%' }}>
-
-          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 8px 0', textAlign: 'center' }}>Patient Portal</h1>
-          <p style={{ fontSize: '14px', color: '#64748B', textAlign: 'center', margin: '0 0 40px 0', fontWeight: '500' }}>Sign in to view your health records</p>
-
-          {error && (
-            <div style={{ marginBottom: '20px', padding: '12px 16px', backgroundColor: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', color: '#DC2626', fontSize: '13px', fontWeight: '600' }}>
-              🚫 {error}
-            </div>
-          )}
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Email Address:</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(''); }}
-              onKeyDown={handleKeyDown}
-              placeholder="e.g. fatima@email.com"
-              style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '40px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>Password:</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setError(''); }}
-              onKeyDown={handleKeyDown}
-              placeholder="Enter your password"
-              style={{ width: '100%', padding: '15px 16px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
-            />
-          </div>
-
-          <button
-            onClick={handleLogin}
-            disabled={loading}
-            style={{ width: '100%', padding: '18px', backgroundColor: loading ? '#94A3B8' : '#3B82F6', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', letterSpacing: '0.3px', transition: 'background 0.2s', marginBottom: '20px' }}
-          >
-            {loading ? 'Signing in...' : 'Access Patient Portal'}
-          </button>
-
-          <p style={{ textAlign: 'center', fontSize: '13px', color: '#64748B', margin: 0 }}>
-            Are you a staff member?{' '}
-            <span onClick={() => navigate('/login')} style={{ color: '#3B82F6', fontWeight: '700', cursor: 'pointer' }}>
-              Staff Login
-            </span>
-          </p>
-
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// --- LANDING PAGE ---
-const LandingPage = () => {
-  const navigate = useNavigate();
-
-  return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
-
-      {/* LEFT PANEL */}
-      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 50px', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '15%', left: '30%', width: '300px', height: '300px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.05)', filter: 'blur(80px)', pointerEvents: 'none' }} />
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '18px', marginBottom: '30px' }}>
-            <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
-            <div>
-              <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
-            </div>
-          </div>
-          <p style={{ fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', margin: 0 }}>
-            Empowering Healthcare through Data
-          </p>
-        </div>
-      </div>
-
-      {/* RIGHT PANEL */}
-      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
-        <div style={{ maxWidth: '380px', width: '100%', textAlign: 'center' }}>
-
-          <h1 style={{ fontSize: '32px', fontWeight: '800', color: '#1E293B', margin: '0 0 12px 0' }}>Welcome</h1>
-          <p style={{ fontSize: '15px', color: '#64748B', margin: '0 0 50px 0', fontWeight: '500', lineHeight: '1.6' }}>
-            Please select how you would like to access the system.
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            
-              
-              <button
-              onClick={() => navigate('/login')}
-              style={{ width: '100%', padding: '20px', backgroundColor: '#3B82F6', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
-                  >
-            Staff Login
-            </button>
-            
-            <button
-              onClick={() => navigate('/patient-login')}
-              style={{ width: '100%', padding: '20px', backgroundColor: '#3B82F6', color: 'white', border: '2px solid #1E293B', borderRadius: '10px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}
-            >
-              Patient Portal
-            </button>
-          </div>
-          <p style={{ marginTop: '30px', fontSize: '15px', color: 'black', fontWeight: '500' }}>
-        
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // --- LOGOUT CONFIRMATION PAGE ---
 const LogoutConfirmation = () => {
   const navigate = useNavigate();
@@ -4622,7 +4863,7 @@ const LogoutConfirmation = () => {
     <div style={{ display: 'flex', height: '100vh', width: '100vw', fontFamily: '"Inter", sans-serif', overflow: 'hidden' }}>
 
       {/* LEFT PANEL — dark branded side */}
-      <div style={{ width: '50%', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', padding: '45px 50px', overflow: 'hidden' }}>
+      <div style={{ width: 'clamp(300px, 50%, 700px)', backgroundColor: '#1A2744', position: 'relative', display: 'flex', flexDirection: 'column', padding: '45px 50px', overflow: 'hidden' }}>
 
         {/* Blurred glow blobs */}
         <div style={{ position: 'absolute', top: '30%', left: '10%', width: '260px', height: '260px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
@@ -4636,25 +4877,26 @@ const LogoutConfirmation = () => {
           <div style={{ fontSize: '70px', fontWeight: '200', lineHeight: '0.6', color: 'rgba(255,255,255,0.85)' }}>+</div>
           <div>
             <h2 style={{ fontSize: '22px', margin: 0, fontWeight: '800', color: 'white', lineHeight: '1.15', letterSpacing: '0.5px' }}>HEALTHCARE<br />EMR</h2>
+            <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', margin: '4px 0 0 0' }}>Cloud-based System</p>
           </div>
         </div>
 
         {/* Tagline */}
-        <p style={{ marginTop: '55px', fontSize: '20px', color: 'white', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
+        <p style={{ marginTop: '55px', fontSize: '20px', color: 'rgba(255,255,255,0.6)', fontWeight: '400', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>
           Empowering Healthcare through Data
         </p>
       </div>
 
       {/* RIGHT PANEL — white session-ended side */}
-      <div style={{ width: '50%', backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px' }}>
+      <div style={{ flex: 1, backgroundColor: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '300px', padding: '60px' }}>
         <div style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
           <h1 style={{ fontSize: '36px', fontWeight: '800', color: '#1E293B', margin: '0 0 20px 0' }}>Session Ended</h1>
           <p style={{ fontSize: '15px', color: '#475569', fontWeight: '600', lineHeight: '1.6', margin: '0 0 50px 0' }}>
             Your session has ended securely. Please log in again to continue managing patient records.
           </p>
           <button
-              onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); navigate('/'); }}            
-              style={{ width: '100%', padding: '18px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.3px' }}
+            onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); localStorage.removeItem('role'); localStorage.removeItem('display_name'); navigate('/'); }}
+            style={{ width: '100%', padding: '18px', backgroundColor: '#1E293B', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.3px' }}
           >
             Return to Login
           </button>
@@ -4670,6 +4912,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ResponsiveStyles />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

@@ -161,12 +161,16 @@ const DoctorDashboard = ({ searchText }) => {
         setLoading(true);
 
         // Fetch appointments
-        const apptRes = await fetch(`${BASE_URL}/api/appointments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const apptData = await apptRes.json();
-        const apptList = Array.isArray(apptData) ? apptData : (apptData.appointments || apptData.data || []);
-        setAppointments(apptList);
+        // Fetch doctor queue (patients ready after triage)
+const res = await fetch(`${BASE_URL}/api/patients/queue/doctor`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
+
+const data = await res.json();
+const list = Array.isArray(data) ? data : (data.data || []);
+
+setAppointments(list);
+
 
         // Fetch patients count
         const patRes = await fetch(`${BASE_URL}/api/patients`, {
@@ -2399,15 +2403,15 @@ const NurseTriage = ({ searchText }) => {
     const data = await res.json();
     const list = Array.isArray(data) ? data : [];
     const normalized = list.map(a => ({
-      n:    a.full_name || 'Unknown',
+      n:    a.full_name || a.name || 'Unknown',
       id:   a.patient_id,
       wait: '—',
-      s:    'Pending',
+      s:   'Pending',
       sbg:  '#FEF3C7',
       stc:  '#B45309',
       appt_id: a.patient_id,
       pl: 'P3', pLabel: 'Routine', pbg: '#DCFCE7', ptc: '#16A34A',
-    }));
+}));
     setQueue(normalized);
   } catch { setQueue([]); }
   finally { setLoading(false); }

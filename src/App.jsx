@@ -943,13 +943,13 @@ const latestRecord = apiRecords[0];
       status: getField(apiPatient, 'status') || 'ACTIVE',
     },
     vitals: {
-      bp:     getField(apiPatient, 'blood_pressure', 'bp') || (latestRecord[0] && getField(latestRecord[0], 'blood_pressure', 'bp')) || '—',
-      hr:     getField(apiPatient, 'heart_rate', 'hr') || (latestRecord[0] && getField(latestRecord[0], 'heart_rate', 'hr')) || '—',
-      temp:   getField(apiPatient, 'temperature', 'temp') || (latestRecord[0] && getField(latestRecord[0], 'temperature', 'temp')) || '—',
-      weight: getField(apiPatient, 'weight') || (latestRecord[0] && getField(latestRecord[0], 'weight')) || '—',
-    },
-    clinicalNotes: (latestRecord[0] && getField(latestRecord[0], 'clinical_notes', 'notes', 'observation')) || getField(apiPatient, 'notes', 'clinical_notes') || 'No clinical notes recorded.',
-    diagnosis:     (latestRecord[0] && getField(latestRecord[0], 'diagnosis')) || getField(apiPatient, 'diagnosis', 'primary_diagnosis') || '—',
+  bp:     (latestRecord && getField(latestRecord, 'blood_pressure', 'bp')) || '—',
+  hr:     (latestRecord && getField(latestRecord, 'pulse_rate', 'heart_rate', 'hr')) || '—',
+  temp:   (latestRecord && getField(latestRecord, 'temperature', 'temp')) || '—',
+  weight: (latestRecord && getField(latestRecord, 'weight')) || '—',
+},
+    clinicalNotes: (latestRecord && getField(latestRecord, 'clinical_notes', 'notes', 'observation')) || getField(apiPatient, 'notes', 'clinical_notes') || 'No clinical notes recorded.',
+    diagnosis:     (latestRecord && getField(latestRecord, 'diagnosis')) || getField(apiPatient, 'diagnosis', 'primary_diagnosis') || '—',
     medication:    (apiPrescriptions[0] && (getField(apiPrescriptions[0], 'medication_name', 'medication', 'drug_name'))) || getField(apiPatient, 'medication') || '—',
   } : {
     personal: { name: passedName || 'Loading...', id: '—', age: '—', gender: '—', status: 'ACTIVE' },
@@ -2207,13 +2207,13 @@ const NursePatientProfile = () => {
       status: gf(apiPatient,'status') || 'ACTIVE',
     },
     vitals: {
-      bp:     gf(apiPatient,'blood_pressure','bp') || (latestRecord[0] && gf(latestRecord[0],'blood_pressure','bp')) || '—',
-hr: gf(apiPatient,'pulse_rate','heart_rate','hr') || (latestRecord && gf(latestRecord,'pulse_rate','heart_rate','hr')) || '—',
-      temp:   gf(apiPatient,'temperature','temp')  || (latestRecord[0] && gf(latestRecord[0],'temperature','temp'))  || '—',
-      weight: gf(apiPatient,'weight')              || (latestRecord[0] && gf(latestRecord[0],'weight'))              || '—',
-    },
-    clinicalNotes: (latestRecord[0] && gf(latestRecord[0],'clinical_notes','notes','observation')) || '—',
-    diagnosis:     (latestRecord[0] && gf(latestRecord[0],'diagnosis')) || gf(apiPatient,'diagnosis','primary_diagnosis') || '—',
+  bp:     (latestRecord && gf(latestRecord, 'blood_pressure', 'bp')) || '—',
+  hr:     (latestRecord && gf(latestRecord, 'pulse_rate', 'heart_rate', 'hr')) || '—',
+  temp:   (latestRecord && gf(latestRecord, 'temperature', 'temp')) || '—',
+  weight: (latestRecord && gf(latestRecord, 'weight')) || '—',
+},
+    clinicalNotes: (latestRecord && gf(latestRecord, 'clinical_notes', 'notes', 'observation')) || '—',
+    diagnosis:     (latestRecord && gf(latestRecord, 'diagnosis')) || gf(apiPatient, 'diagnosis', 'primary_diagnosis') || '—',
   } : {
     personal: { name: passedName || 'Loading...', id:'—', age:'—', gender:'—', status:'ACTIVE' },
     vitals: { bp:'—', hr:'—', temp:'—', weight:'—' },
@@ -2662,24 +2662,24 @@ const NurseSchedule = ({ searchText }) => {
     const fetchSchedule = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`${BASE_URL}/api/appointments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const res = await fetch(`${BASE_URL}/api/patients/triage/queue`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : (data.appointments || data.data || []);
           setScheduleData(list.map(a => ({
-            n:       a.patient_name || (a.patient && a.patient.name) || 'Unknown',
-            id:      a.patient_id   || (a.patient && a.patient.id),
-            appt_id: a.id || a._id,
-            t:       a.appointment_time || a.appointment_date || '—',
-            r:       a.reason || a.reason_for_visit || '—',
-            v:       (a.vitals_status || '').toLowerCase() === 'captured' ? 'Captured' : 'Pending',
-            vbg:     (a.vitals_status || '').toLowerCase() === 'captured' ? '#DCFCE7' : '#FEF3C7',
-            vtc:     (a.vitals_status || '').toLowerCase() === 'captured' ? '#16A34A' : '#B45309',
-            ready:   (a.vitals_status || '').toLowerCase() === 'captured',
-            ...priorityStyle(a.triage_level || a.priority),
-          })));
+  n:       a.full_name || 'Unknown',
+  id:      a.patient_id,
+  appt_id: a.patient_id,
+  t:       a.registration_date || '—',
+  r:       a.chief_complaint || 'Walk-in',
+  v:       'Pending',
+  vbg:     '#FEF3C7',
+  vtc:     '#B45309',
+  ready:   false,
+  ...priorityStyle(a.triage_level),
+})));
         }
       } catch { } finally { setLoading(false); }
     };

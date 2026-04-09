@@ -156,60 +156,57 @@ const DoctorDashboard = ({ searchText }) => {
   };
 
   React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-        // Fetch appointments
-        // Fetch doctor queue (patients ready after triage)
-const res = await fetch(`${BASE_URL}/api/patients/queue/doctor`, {
-  headers: { Authorization: `Bearer ${token}` }
-});
+      const [queueRes, patRes, labRes] = await Promise.all([
+        fetch(`${BASE_URL}/api/patients/queue/doctor`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BASE_URL}/api/patients`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${BASE_URL}/api/lab-requests`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
 
-const data = await res.json();
-const list = Array.isArray(data) ? data : (data.data || []);
+      const queueData = queueRes.ok ? await queueRes.json() : [];
+      const patData   = patRes.ok   ? await patRes.json()   : [];
+      const labData   = labRes.ok   ? await labRes.json()   : [];
 
-setAppointments(list);
+      const queueList = Array.isArray(queueData) ? queueData : [];
+      const patList   = Array.isArray(patData)   ? patData   : (patData.patients || []);
+      const labList   = Array.isArray(labData)   ? labData   : (labData.labRequests || []);
 
+      const normalized = queueList.map(a => ({
+        n:   a.full_name || 'Unknown',
+        id:  a.patient_id,
+        t:   a.registration_date || 'Walk-in',
+        r:   a.chief_complaint || 'Walk-in',
+        s:   a.status || 'active',
+        patient_id: a.patient_id,
+      }));
 
-        // Fetch patients count
-        const patRes = await fetch(`${BASE_URL}/api/patients`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const patData = await patRes.json();
-        const patList = Array.isArray(patData) ? patData : (patData.patients || patData.data || []);
+      setAppointments(normalized);
+      setStats({
+        total:   patList.length,
+        today:   queueList.length,
+        pending: labList.filter(l => (l.status || '').toLowerCase() === 'pending').length,
+      });
 
-        // Fetch lab requests for pending labs count
-        const labRes = await fetch(`${BASE_URL}/api/lab-requests`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const labData = await labRes.json();
-        const labList = Array.isArray(labData) ? labData : (labData.labRequests || labData.data || []);
-        const pendingLabs = labList.filter(l => (l.status || '').toLowerCase() === 'pending').length;
-
-        setStats({
-          total: patList.length,
-          today: apptList.length,
-          pending: pendingLabs,
-        });
-
-      } catch (err) {
-        setError('Failed to load dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+    } catch (err) {
+      setError('Failed to load dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchData();
+}, []);
 
   const filteredData = appointments.filter(p => {
     const name = p.patient_name || p.patientName || (p.patient && p.patient.name) || '';
     const reason = p.reason || p.reason_for_visit || '';
     return name.toLowerCase().includes(searchText.toLowerCase()) ||
-           reason.toLowerCase().includes(searchText.toLowerCase());
+          reason.toLowerCase().includes(searchText.toLowerCase());
   });
 
-  const getPatientName = (p) => p.patient_name || p.patientName || (p.patient && p.patient.name) || 'Unknown';
+const getPatientName = (p) => p.full_name || p.patient_name || p.name || 'Unknown';
   const getTime = (p) => p.appointment_time || p.time || p.appointment_date || '—';
   const getReason = (p) => p.reason || p.reason_for_visit || p.reason_for_appointment || '—';
   const getStatus = (p) => p.status || 'Pending';
@@ -648,6 +645,7 @@ const DoctorSchedule = ({ searchText }) => {
             SAVE RECORD
           </button>
         </div>
+        
 
         {/* Prescription Modal */}
         {showOrderModal && (
@@ -901,63 +899,37 @@ const PatientProfile = () => {
   const [loadingProfile, setLoadingProfile] = React.useState(true);
 
   React.useEffect(() => {
-    const fetchPatientData = async () => {
-      try {
-        setLoadingProfile(true);
+  const fetchPatientData = async () => {
+    try {
+      setLoadingProfile(true);
 
-        // Fetch all patients and find the right one by name or id
-        const pRes = await fetch(`${BASE_URL}/api/patients`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        const pData = await pRes.json();
-        const pList = Array.isArray(pData) ? pData : (pData.patients || pData.data || []);
+      const pid = passedId;
+      if (!pid) return;
 
-        const getName = (p) => p.name || p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim();
-        let patient = pList.find(p => {
-          if (passedId) return String(p.id || p._id || p.patient_id) === String(passedId);
-          return getName(p).toLowerCase() === (passedName || '').toLowerCase();
-        }) || pList[0];
+      const res = await fetch(`${BASE_URL}/api/patients/${pid}/full`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-        setApiPatient(patient);
+      if (res.ok) {
+        const data = await res.json();
 
-        if (!patient) return;
-        const pid = patient.id || patient._id || patient.patient_id;
-
-        // Fetch medical records
-        const rRes = await fetch(`${BASE_URL}/api/medical-records/patient/${pid}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (rRes.ok) {
-          const rData = await rRes.json();
-          setApiRecords(Array.isArray(rData) ? rData : (rData.records || rData.data || []));
-        }
-
-        // Fetch prescriptions
-        const rxRes = await fetch(`${BASE_URL}/api/prescriptions/patient/${pid}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (rxRes.ok) {
-          const rxData = await rxRes.json();
-          setApiPrescriptions(Array.isArray(rxData) ? rxData : (rxData.prescriptions || rxData.data || []));
-        }
-
-        // Fetch lab results
-        const lrRes = await fetch(`${BASE_URL}/api/lab-results`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (lrRes.ok) {
-          const lrData = await lrRes.json();
-          setApiLabResults(Array.isArray(lrData) ? lrData : (lrData.labResults || lrData.data || []));
-        }
-
-      } catch (err) {
-        console.error('Failed to load patient profile:', err);
-      } finally {
-        setLoadingProfile(false);
+        setApiPatient(data.patient);
+        setApiRecords(data.records || []);
+        setApiPrescriptions(data.prescriptions || []);
       }
-    };
-    fetchPatientData();
-  }, [passedName, passedId]);
+
+    } catch (err) {
+      console.error('Failed to load patient profile:', err);
+    } finally {
+      setLoadingProfile(false);
+    }
+  };
+
+  fetchPatientData();
+}, [passedId]);
+
+const latestRecord = apiRecords[0];
+      
 
   // Build profileData from API or fallback gracefully
   const getField = (obj, ...keys) => { for (const k of keys) { if (obj && obj[k] !== undefined && obj[k] !== null) return obj[k]; } return null; };
@@ -971,13 +943,13 @@ const PatientProfile = () => {
       status: getField(apiPatient, 'status') || 'ACTIVE',
     },
     vitals: {
-      bp:     getField(apiPatient, 'blood_pressure', 'bp') || (apiRecords[0] && getField(apiRecords[0], 'blood_pressure', 'bp')) || '—',
-      hr:     getField(apiPatient, 'heart_rate', 'hr') || (apiRecords[0] && getField(apiRecords[0], 'heart_rate', 'hr')) || '—',
-      temp:   getField(apiPatient, 'temperature', 'temp') || (apiRecords[0] && getField(apiRecords[0], 'temperature', 'temp')) || '—',
-      weight: getField(apiPatient, 'weight') || (apiRecords[0] && getField(apiRecords[0], 'weight')) || '—',
+      bp:     getField(apiPatient, 'blood_pressure', 'bp') || (latestRecord[0] && getField(latestRecord[0], 'blood_pressure', 'bp')) || '—',
+      hr:     getField(apiPatient, 'heart_rate', 'hr') || (latestRecord[0] && getField(latestRecord[0], 'heart_rate', 'hr')) || '—',
+      temp:   getField(apiPatient, 'temperature', 'temp') || (latestRecord[0] && getField(latestRecord[0], 'temperature', 'temp')) || '—',
+      weight: getField(apiPatient, 'weight') || (latestRecord[0] && getField(latestRecord[0], 'weight')) || '—',
     },
-    clinicalNotes: (apiRecords[0] && getField(apiRecords[0], 'clinical_notes', 'notes', 'observation')) || getField(apiPatient, 'notes', 'clinical_notes') || 'No clinical notes recorded.',
-    diagnosis:     (apiRecords[0] && getField(apiRecords[0], 'diagnosis')) || getField(apiPatient, 'diagnosis', 'primary_diagnosis') || '—',
+    clinicalNotes: (latestRecord[0] && getField(latestRecord[0], 'clinical_notes', 'notes', 'observation')) || getField(apiPatient, 'notes', 'clinical_notes') || 'No clinical notes recorded.',
+    diagnosis:     (latestRecord[0] && getField(latestRecord[0], 'diagnosis')) || getField(apiPatient, 'diagnosis', 'primary_diagnosis') || '—',
     medication:    (apiPrescriptions[0] && (getField(apiPrescriptions[0], 'medication_name', 'medication', 'drug_name'))) || getField(apiPatient, 'medication') || '—',
   } : {
     personal: { name: passedName || 'Loading...', id: '—', age: '—', gender: '—', status: 'ACTIVE' },
@@ -1990,7 +1962,7 @@ const NurseDashboard = () => {
       const res = await fetch(`${BASE_URL}/api/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ first_name: firstName, last_name: lastName, email, date_of_birth: dob, phone, gender, registration_date: dateOfReg }),
+        body: JSON.stringify({   full_name: `${firstName} ${lastName}`, email, date_of_birth: dob, phone, gender, registration_date: dateOfReg }),
       });
       if (res.ok) {
         setShowRegisterModal(false);
@@ -2004,20 +1976,23 @@ const NurseDashboard = () => {
   };
 
   React.useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const apptRes = await fetch(`${BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } });
-        const apptData = await apptRes.json();
-        const appts = Array.isArray(apptData) ? apptData : (apptData.appointments || apptData.data || []);
-        setStats({
-          waiting:   appts.filter(a => (a.status || '').toLowerCase() === 'pending').length.toString(),
-          captured:  appts.filter(a => (a.vitals_status || '').toLowerCase() === 'captured').length.toString(),
-          emergency: appts.filter(a => (a.triage_level || a.priority || '').toString().includes('1')).length.toString(),
-        });
-      } catch { setStats({ waiting: '—', captured: '—', emergency: '—' }); }
-    };
-    fetchStats();
-  }, []);
+  const fetchStats = async () => {
+    try {
+      const res = await fetch(`${BASE_URL}/api/patients/stats/nurse`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      setStats({
+        waiting: data.waiting.toString(),
+        captured: data.captured.toString(),
+        emergency: data.emergency.toString()
+      });
+    } catch {
+      setStats({ waiting: '0', captured: '0', emergency: '0' });
+    }
+  };
+  fetchStats();
+}, []);
 
   return (
     <div>
@@ -2076,7 +2051,7 @@ const NurseDashboard = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Date of Birth</label>
-                <input value={dob} onChange={e => setDob(e.target.value)} type="date" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                <input value={dob} onChange={e => setDob(e.target.value)} type="text" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Phone Number</label>
@@ -2222,6 +2197,7 @@ const NursePatientProfile = () => {
 
   const gf = (obj, ...keys) => { for (const k of keys) if (obj && obj[k] != null) return obj[k]; return null; };
 
+  const latestRecord = apiRecords && apiRecords.length > 0 ? apiRecords[0] : null;
   const p = apiPatient ? {
     personal: {
       name:   gf(apiPatient,'name','full_name') || `${apiPatient.first_name||''} ${apiPatient.last_name||''}`.trim() || passedName || '—',
@@ -2231,13 +2207,13 @@ const NursePatientProfile = () => {
       status: gf(apiPatient,'status') || 'ACTIVE',
     },
     vitals: {
-      bp:     gf(apiPatient,'blood_pressure','bp') || (apiRecords[0] && gf(apiRecords[0],'blood_pressure','bp')) || '—',
-      hr:     gf(apiPatient,'heart_rate','hr')     || (apiRecords[0] && gf(apiRecords[0],'heart_rate','hr'))     || '—',
-      temp:   gf(apiPatient,'temperature','temp')  || (apiRecords[0] && gf(apiRecords[0],'temperature','temp'))  || '—',
-      weight: gf(apiPatient,'weight')              || (apiRecords[0] && gf(apiRecords[0],'weight'))              || '—',
+      bp:     gf(apiPatient,'blood_pressure','bp') || (latestRecord[0] && gf(latestRecord[0],'blood_pressure','bp')) || '—',
+hr: gf(apiPatient,'pulse_rate','heart_rate','hr') || (latestRecord && gf(latestRecord,'pulse_rate','heart_rate','hr')) || '—',
+      temp:   gf(apiPatient,'temperature','temp')  || (latestRecord[0] && gf(latestRecord[0],'temperature','temp'))  || '—',
+      weight: gf(apiPatient,'weight')              || (latestRecord[0] && gf(latestRecord[0],'weight'))              || '—',
     },
-    clinicalNotes: (apiRecords[0] && gf(apiRecords[0],'clinical_notes','notes','observation')) || '—',
-    diagnosis:     (apiRecords[0] && gf(apiRecords[0],'diagnosis')) || gf(apiPatient,'diagnosis','primary_diagnosis') || '—',
+    clinicalNotes: (latestRecord[0] && gf(latestRecord[0],'clinical_notes','notes','observation')) || '—',
+    diagnosis:     (latestRecord[0] && gf(latestRecord[0],'diagnosis')) || gf(apiPatient,'diagnosis','primary_diagnosis') || '—',
   } : {
     personal: { name: passedName || 'Loading...', id:'—', age:'—', gender:'—', status:'ACTIVE' },
     vitals: { bp:'—', hr:'—', temp:'—', weight:'—' },

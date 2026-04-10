@@ -2771,12 +2771,11 @@ const NurseSchedule = ({ searchText }) => {
             </div>
             <div>
               <button
-                onClick={() => { if (!p.ready) { setSelectedPatient(p); setShowVitalsModal(true); } }}
-                disabled={p.ready}
-                style={{ padding: '9px 14px', backgroundColor: p.ready ? '#94A3B8' : '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: p.ready ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}
-              >
-                {p.ready ? '✓ Ready' : 'Prepare Patient'}
-              </button>
+  onClick={() => navigate('/nurse-triage')}
+  style={{ padding: '9px 14px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
+>
+  Go to Triage
+</button>
             </div>
           </div>
         ))}

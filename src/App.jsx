@@ -437,20 +437,13 @@ const DoctorSchedule = ({ searchText }) => {
     const fetchSchedule = async () => {
       try {
         setLoading(true);
-        // Try doctor-specific schedule first
-        const doctorId = user.id || user._id;
-        let res = doctorId
-          ? await fetch(`${BASE_URL}/api/doctors/${doctorId}/schedule`, { headers: { Authorization: `Bearer ${token}` } })
-          : null;
+        
+        const res = await fetch(`${BASE_URL}/api/patients/queue/doctor`, {
+  headers: { Authorization: `Bearer ${token}` }
+});
 
-        // Fallback to all appointments
-        if (!res || !res.ok) {
-          res = await fetch(`${BASE_URL}/api/appointments`, { headers: { Authorization: `Bearer ${token}` } });
-        }
-
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.appointments || data.schedule || data.data || []);
-
+const data = await res.json();
+const list = Array.isArray(data) ? data : [];
         // Normalize each appointment
         const normalized = list.map(a => ({
           n:      a.patient_name || a.patientName || (a.patient && a.patient.name) || 'Unknown',
@@ -2183,7 +2176,7 @@ const NursePatientProfile = () => {
         setApiPatient(patient);
 
         if (patient) {
-          const pid = patient.id || patient._id || patient.patient_id;
+          const pid = patient.id || patient._id || patient._id;
           const rRes = await fetch(`${BASE_URL}/api/medical-records/patient/${pid}`, { headers: { Authorization: `Bearer ${token}` } });
           if (rRes.ok) {
             const rData = await rRes.json();
@@ -2378,6 +2371,7 @@ const NurseTriage = ({ searchText }) => {
     });
     const data = await res.json();
     const list = Array.isArray(data) ? data : [];
+    console.log(list[0]);
     const normalized = list.map(a => ({
       n:    a.full_name || a.name || 'Unknown',
       id:   a.patient_id,
@@ -2624,6 +2618,7 @@ const NurseTriage = ({ searchText }) => {
 
 // --- NURSE SCHEDULE VIEW (read-only doctor schedule) ---
 const NurseSchedule = ({ searchText }) => {
+  const navigate = useNavigate();
   const gridTemplate = '22% 15% 18% 17% 14% 14%';
   const token = localStorage.getItem('token');
   const user  = JSON.parse(localStorage.getItem('user') || '{}');
@@ -2668,18 +2663,19 @@ const NurseSchedule = ({ searchText }) => {
         if (res.ok) {
           const data = await res.json();
           const list = Array.isArray(data) ? data : (data.appointments || data.data || []);
-          setScheduleData(list.map(a => ({
+            const normalized = list.map(a => ({
   n:       a.full_name || 'Unknown',
   id:      a.patient_id,
   appt_id: a.patient_id,
-  t:       a.registration_date || '—',
-  r:       a.chief_complaint || 'Walk-in',
+t: a.registration_date ? new Date(a.registration_date).toLocaleDateString('en-GB') : '—',  r:       a.chief_complaint || 'Walk-in',
   v:       'Pending',
   vbg:     '#FEF3C7',
   vtc:     '#B45309',
   ready:   false,
   ...priorityStyle(a.triage_level),
-})));
+}));
+          setScheduleData(normalized);
+
         }
       } catch { } finally { setLoading(false); }
     };

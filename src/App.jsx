@@ -325,8 +325,7 @@ const PatientDatabase = ({ searchText }) => {
   }, []);
 
   const getName  = (p) => p.name || p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
-  const getId    = (p) => p.patient_id || p.id || p._id || '—';
-  const getDiag  = (p) => p.diagnosis || p.primary_diagnosis || '—';
+const getId = (p) => p.national_patient_id || p.patient_id || p.id || '—';  const getDiag  = (p) => p.diagnosis || p.primary_diagnosis || '—';
   const getStatus= (p) => p.status || 'Active';
 
   const filtered = patients.filter(p => {

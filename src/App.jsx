@@ -179,7 +179,7 @@ const DoctorDashboard = ({ searchText }) => {
         n:   a.full_name || 'Unknown',
         id:  a.patient_id,
         t:   a.registration_date || 'Walk-in',
-        r:   a.chief_complaint || 'Walk-in',
+        r: a.chief_complaint || a.reason || 'Walk-in',
         s:   a.status || 'active',
         patient_id: a.patient_id,
       }));

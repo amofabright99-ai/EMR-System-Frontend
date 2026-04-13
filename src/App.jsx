@@ -174,6 +174,7 @@ const DoctorDashboard = ({ searchText }) => {
       const patList   = Array.isArray(patData)   ? patData   : (patData.patients || []);
       const labList   = Array.isArray(labData)   ? labData   : (labData.labRequests || []);
 
+      console.log('First patient in queue:', queueList[0]);
       const normalized = queueList.map(a => ({
         n:   a.full_name || 'Unknown',
         id:  a.patient_id,
@@ -206,8 +207,7 @@ const DoctorDashboard = ({ searchText }) => {
           reason.toLowerCase().includes(searchText.toLowerCase());
   });
 
-const getPatientName = (p) => p.full_name || p.patient_name || p.name || 'Unknown';
-  const getTime = (p) => p.appointment_time || p.time || p.appointment_date || '—';
+const getPatientName = (p) => p.n || p.full_name || p.patient_name || p.name || 'Unknown';  const getTime = (p) => p.appointment_time || p.time || p.appointment_date || '—';
   const getReason = (p) => p.reason || p.reason_for_visit || p.reason_for_appointment || '—';
   const getStatus = (p) => p.status || 'Pending';
 
@@ -2043,7 +2043,7 @@ const NurseDashboard = () => {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Date of Birth</label>
-                <input value={dob} onChange={e => setDob(e.target.value)} type="text" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                <input value={dob} onChange={e => setDob(e.target.value)} type="text" placeholder="e.g. 20/09/2002" style={{ width: '100%', padding: '12px 14px', border: '1px solid #E2E8F0', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '700', color: '#1E293B', marginBottom: '8px' }}>Phone Number</label>
@@ -2103,11 +2103,11 @@ const NursePatients = ({ searchText }) => {
   }, []);
 
   const getName = (p) => p.full_name || p.name || 'Unknown';  
-  const getId     = (p) => p.patient_id || p.id || p._id || '—';
-  const getDiag   = (p) => p.diagnosis || p.primary_diagnosis || '—';
+const getId = (p) => p.national_patient_id || p.patient_id || p.id || '—';  
+const getDiag   = (p) => p.diagnosis || p.primary_diagnosis || '—';
   const getStatus = (p) => p.status || 'Active';
 
- const filtered = patients.filter(p => {
+  const filtered = patients.filter(p => {
   const q = searchText.toLowerCase();
   return (
     (p.full_name || '').toLowerCase().includes(q) ||
@@ -2666,7 +2666,8 @@ const NurseSchedule = ({ searchText }) => {
   n:       a.full_name || 'Unknown',
   id:      a.patient_id,
   appt_id: a.patient_id,
-t: a.registration_date ? new Date(a.registration_date).toLocaleDateString('en-GB') : '—',  r:       a.chief_complaint || 'Walk-in',
+t: a.registration_date ? new Date(a.registration_date).toLocaleDateString('en-GB') : '—',  
+r: a.chief_complaint || 'Walk-in',
   v:       'Pending',
   vbg:     '#FEF3C7',
   vtc:     '#B45309',
@@ -3125,8 +3126,7 @@ const PharmPatientHistory = () => {
   }, [passedName, passedId]);
 
   const getName = (p) => p ? (p.name || p.full_name || `${p.first_name||''} ${p.last_name||''}`.trim()) : passedName;
-  const getId   = (p) => p ? (p.patient_id || p.id || p._id || '—') : '—';
-
+const getId = (p) => p.national_patient_id || p.patient_id || p.id || '—';
   const gridTemplate = '24% 22% 20% 14% 20%';
 
   return (
@@ -4397,7 +4397,7 @@ const LabResultsPage = () => {
   };
 
   const getName = (p) => p ? (p.name || p.full_name || `${p.first_name||''} ${p.last_name||''}`.trim()) : 'Unknown';
-  const getId   = (p) => p ? (p.patient_id || p.id || p._id || '—') : '—';
+const getId = (p) => p.national_patient_id || p.patient_id || p.id || '—'; 
   const allergy = patient?.allergies || patient?.allergy || null;
 
   const gridTemplate = '28% 24% 28% 20%';

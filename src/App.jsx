@@ -445,16 +445,16 @@ const data = await res.json();
 const list = Array.isArray(data) ? data : [];
         // Normalize each appointment
         const normalized = list.map(a => ({
-          n:      a.patient_name || a.patientName || (a.patient && a.patient.name) || 'Unknown',
+          n: a.full_name || a.patient_name || 'Unknown',
           id:     a.patient_id   || (a.patient && a.patient.id) || a.id || '—',
           age:    a.age          || (a.patient && a.patient.age) || '—',
           gender: a.gender       || (a.patient && a.patient.gender) || '—',
           t:      a.appointment_time || a.time || a.appointment_date || '—',
-          r:      a.reason       || a.reason_for_visit || '—',
+          r: a.chief_complaint || a.reason || 'Walk-in',
           tl:     a.triage_level || a.priority || 'P3',
-          v:      a.vitals_status || a.vitals || 'Pending',
+          v: 'Captured',
           bp:     a.blood_pressure || (a.vitals && a.vitals.bp) || '—',
-          hr:     a.heart_rate   || (a.vitals && a.vitals.hr) || '—',
+          hr: a.pulse_rate || '—',
           appt_id: a.id || a._id,
           ...priorityStyle(a.triage_level || a.priority),
           ...vitalStyle(a.vitals_status || a.vitals),

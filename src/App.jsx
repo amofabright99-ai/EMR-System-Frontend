@@ -179,7 +179,7 @@ const DoctorDashboard = ({ searchText }) => {
         n:   a.full_name || 'Unknown',
         id:  a.patient_id,
         t:   a.registration_date || 'Walk-in',
-        r: a.chief_complaint || a.reason || 'Walk-in',
+        r:   a.chief_complaint || 'Walk-in',
         s:   a.status || 'active',
         patient_id: a.patient_id,
       }));
@@ -407,6 +407,7 @@ const DoctorSchedule = ({ searchText }) => {
   const [labChecks, setLabChecks] = React.useState({ malaria: false, fbc: false, spo2: false, xray: false });
   const [labNotes, setLabNotes]   = React.useState('');
   const [submittingLab, setSubmittingLab] = React.useState(false);
+  const allergyMap = {};
 
   const gridTemplate = "20% 12% 23% 15% 15% 15%";
 

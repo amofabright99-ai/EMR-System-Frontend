@@ -325,7 +325,11 @@ const PatientDatabase = ({ searchText }) => {
   }, []);
 
   const getName  = (p) => p.name || p.full_name || `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Unknown';
-const getId = (p) => p.national_patient_id || p.patient_id || p.id || '—';  const getDiag  = (p) => p.diagnosis || p.primary_diagnosis || '—';
+const getId = (p) => p.patient_id || p.id || '—';
+
+const getDisplayId = (p) =>
+  p.national_patient_id || p.patient_id || '—'; 
+const getDiag  = (p) => p.diagnosis || p.primary_diagnosis || '—';
   const getStatus= (p) => p.status || 'Active';
 
   const filtered = patients.filter(p => {
@@ -385,6 +389,7 @@ const DoctorSchedule = ({ searchText }) => {
 
   const [viewingPatient, setViewingPatient]     = React.useState(null);
   const [note, setNote]                         = React.useState('');
+  const [diagnosis, setDiagnosis] = React.useState('');
   const [completedPatients, setCompletedPatients] = React.useState([]);
   const [showOrderModal, setShowOrderModal]     = React.useState(false);
   const [showLabModal, setShowLabModal]         = React.useState(false);
@@ -490,12 +495,15 @@ const list = Array.isArray(data) ? data : [];
         body: JSON.stringify({
           patient_id:     viewingPatient.id,
           clinical_notes: note,
+          diagnosis:    diagnosis,
           vitals: { blood_pressure: viewingPatient.bp, heart_rate: viewingPatient.hr },
         }),
       });
     } catch (err) { /* fail silently, still show toast */ }
 
     setCompletedPatients(prev => [...prev, viewingPatient.n]);
+    setNote('');
+    setDiagnosis('');
     triggerToast(`Record for ${viewingPatient.n} saved successfully!`);
     setTimeout(() => setViewingPatient(null), 1500);
   };
@@ -602,7 +610,7 @@ const list = Array.isArray(data) ? data : [];
             </div>
 
             <div style={{ display: 'flex', gap: '20px' }}>
-              <div style={{ backgroundColor: '#F0FDF4', padding: '20px', borderRadius: '12px', textAlign: 'center', width: '120px' }}>
+              <div style={{ backgroundColor: '#F0FDF4', padding: '20px', borderRadius: '12px', textAlign: 'center', minWidth: '140px' }}>
                 <span style={{ fontSize: '11px', color: '#166534', fontWeight: '800' }}>BP(mmHg)</span>
                 <h3 style={{ margin: '10px 0 0 0', fontSize: '24px', fontWeight: '800', color: '#14532D' }}>{viewingPatient.bp}</h3>
               </div>
@@ -621,6 +629,37 @@ const list = Array.isArray(data) ? data : [];
               placeholder="Start typing medical findings, symptoms, or diagnosis..."
               style={{ width: '100%', height: '220px', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '15px', resize: 'none', fontFamily: '"Inter", sans-serif', fontSize: '14px', boxSizing: 'border-box' }}
             />
+            <div style={{
+  backgroundColor: 'white',
+  padding: '20px 30px',
+  borderRadius: '16px',
+  border: '1px solid #E2E8F0',
+  marginTop: '20px'
+}}>
+  <h3 style={{
+    margin: '0 0 15px 0',
+    fontSize: '18px',
+    fontWeight: '800',
+    color: '#1E293B'
+  }}>
+    Primary Diagnosis
+  </h3>
+
+  <input
+    value={diagnosis}
+    onChange={(e) => setDiagnosis(e.target.value)}
+    placeholder="Enter diagnosis code or description..."
+    style={{
+      width: '100%',
+      padding: '13px 15px',
+      border: '1px solid #E2E8F0',
+      borderRadius: '8px',
+      fontSize: '14px',
+      boxSizing: 'border-box',
+      outline: 'none'
+    }}
+  />
+</div>
           </div>
         </div>
 
@@ -632,6 +671,9 @@ const list = Array.isArray(data) ? data : [];
             <button onClick={() => setShowLabModal(true)} style={{ padding: '12px 25px', backgroundColor: 'white', color: '#1E293B', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
               + Request Lab
             </button>
+            <button onClick={() => setShowOrderModal(true)} style={{ padding: '12px 25px', backgroundColor: '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
+              + New Prescription
+            </button>
           </div>
 
           <button onClick={handleSaveRecord} style={{ padding: '12px 40px', backgroundColor: '#22C55E', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
@@ -640,67 +682,204 @@ const list = Array.isArray(data) ? data : [];
         </div>
         
 
-        {/* Prescription Modal */}
-        {showOrderModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ width: '640px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-              <div style={{ padding: '25px 30px', borderBottom: '1px solid #F1F5F9' }}>
-                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
-                  <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
-                  <input placeholder="Search for a medication..." style={{ width: '100%', padding: '14px 15px 14px 45px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#1E293B' }}>New Medication Order</h3>
-                  <span onClick={() => setShowOrderModal(false)} style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}>X</span>
-                </div>
-              </div>
+       {/* Prescription Modal */}
+{showOrderModal && (
+  <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+    
+    <div style={{ width: 'min(640px, 90vw)', maxHeight: '90vh', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden', overflowY: 'auto' }}>
+      
+      {/* Header */}
+      <div style={{ padding: '25px 30px', borderBottom: '1px solid #F1F5F9' }}>
+        
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+          <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
 
-              <div style={{ padding: '30px', maxHeight: '450px', overflowY: 'auto' }}>
-                <div style={{ paddingBottom: '25px', marginBottom: '25px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ marginBottom: '15px' }}><input defaultValue="Artemether - Lumefantrine (Coartem)" style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} /></div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                    <input defaultValue="20mg/120mg" style={{ width: '100%', padding: '12px 15px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} />
-                    <input defaultValue="1 tab, twice daily for 3 days" style={{ width: '100%', padding: '12px 15px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div><label style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', display: 'block', marginBottom: '5px' }}>Quantity:</label><input defaultValue="6" style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} /></div>
-                    <div><label style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', display: 'block', marginBottom: '5px' }}>Refills:</label><input defaultValue="0" style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} /></div>
-                  </div>
-                </div>
+          <input
+            placeholder="Search for a medication..."
+            style={{
+              width: '100%',
+              padding: '14px 15px 14px 45px',
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              boxSizing: 'border-box',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}
+          />
+        </div>
 
-                <div style={{ paddingBottom: '25px', marginBottom: '25px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                    <input defaultValue="Ciprofloxacin" style={{ flex: 1, padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '700' }} />
-                    <span style={{ backgroundColor: '#DCFCE7', color: '#166534', padding: '8px 15px', borderRadius: '20px', fontSize: '11px', fontWeight: '800', whiteSpace: 'nowrap' }}>✅ ALLERGY SAFE</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                    <input defaultValue="500mg" style={{ width: '100%', padding: '12px 15px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} />
-                    <input defaultValue="1 tablet, twice daily for 5 days" style={{ width: '100%', padding: '12px 15px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} />
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                    <div><label style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', display: 'block', marginBottom: '5px' }}>Quantity:</label><input defaultValue="10" style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} /></div>
-                    <div><label style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', display: 'block', marginBottom: '5px' }}>Refills:</label><input defaultValue="0" style={{ width: '100%', padding: '12px 15px', borderRadius: '8px', border: '1px solid #E2E8F0', boxSizing: 'border-box', fontSize: '14px', fontWeight: '600' }} /></div>
-                  </div>
-                </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h3 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#1E293B' }}>
+            New Medication Order
+          </h3>
 
-                <div>
-                  <label style={{ fontSize: '12px', fontWeight: '700', color: '#1E293B', display: 'block', marginBottom: '8px' }}>Signature:</label>
-                  <div style={{ width: '100%', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '20px', boxSizing: 'border-box', fontStyle: 'italic', color: '#3B82F6', fontWeight: '700' }}>Dr. Bright Amofa</div>
-                </div>
-              </div>
+          <span
+            onClick={() => setShowOrderModal(false)}
+            style={{ cursor: 'pointer', fontWeight: '800', fontSize: '18px', color: '#64748B' }}
+          >
+            X
+          </span>
+        </div>
+      </div>
 
-              <div style={{ padding: '25px 30px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
-                <button onClick={() => navigate(-1)} style={{ padding: '12px 25px', backgroundColor: 'white', color: '#64748B', border: '1px solid #E2E8F0', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>Cancel</button>
-                <button onClick={handleFinalizeOrder} disabled={submittingRx} style={{ padding: '12px 30px', backgroundColor: submittingRx ? '#94A3B8' : '#3B82F6', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: submittingRx ? 'not-allowed' : 'pointer' }}>{submittingRx ? 'Sending...' : 'Finalize & Send to Pharmacy'}</button>
-              </div>
-            </div>
+      {/* Body */}
+      <div style={{ padding: '30px', maxHeight: '450px', overflowY: 'auto' }}>
+
+        <div style={{ paddingBottom: '25px', marginBottom: '25px', borderBottom: '1px solid #F1F5F9' }}>
+
+          {/* Medication Name */}
+          <div style={{ marginBottom: '15px' }}>
+            <input
+              value={rxMed}
+              onChange={(e) => setRxMed(e.target.value)}
+              placeholder="Enter medication name..."
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                boxSizing: 'border-box',
+                fontSize: '14px',
+                fontWeight: '700'
+              }}
+            />
           </div>
-        )}
+
+          {/* Dosage + Frequency */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+
+            <input
+              value={rxDose}
+              onChange={(e) => setRxDose(e.target.value)}
+              placeholder="Dosage"
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                backgroundColor: '#F8FAFC',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                boxSizing: 'border-box',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            />
+
+            <input
+              value={rxFreq}
+              onChange={(e) => setRxFreq(e.target.value)}
+              placeholder="Frequency"
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                backgroundColor: '#F8FAFC',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                boxSizing: 'border-box',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            />
+
+          </div>
+
+          {/* Duration */}
+          <div style={{ marginBottom: '15px' }}>
+            <input
+              value={rxDur}
+              onChange={(e) => setRxDur(e.target.value)}
+              placeholder="Duration"
+              style={{
+                width: '100%',
+                padding: '12px 15px',
+                borderRadius: '8px',
+                border: '1px solid #E2E8F0',
+                boxSizing: 'border-box',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            />
+          </div>
+
+        </div>
+
+        {/* Signature */}
+        <div>
+          <label
+            style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#1E293B',
+              display: 'block',
+              marginBottom: '8px'
+            }}
+          >
+            Signature:
+          </label>
+
+          <div
+            style={{
+              width: '100%',
+              border: '1px solid #E2E8F0',
+              borderRadius: '8px',
+              padding: '20px',
+              boxSizing: 'border-box',
+              fontStyle: 'italic',
+              color: '#3B82F6',
+              fontWeight: '700'
+            }}
+          >
+            Dr. Bright Amofa
+          </div>
+        </div>
+
+      </div>
+
+      {/* Footer */}
+      <div style={{ padding: '25px 30px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: '15px' }}>
+
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            padding: '12px 25px',
+            backgroundColor: 'white',
+            color: '#64748B',
+            border: '1px solid #E2E8F0',
+            borderRadius: '8px',
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: 'pointer'
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={handleFinalizeOrder}
+          disabled={submittingRx}
+          style={{
+            padding: '12px 30px',
+            backgroundColor: submittingRx ? '#94A3B8' : '#3B82F6',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontWeight: '700',
+            fontSize: '14px',
+            cursor: submittingRx ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {submittingRx ? 'Sending...' : 'Finalize & Send to Pharmacy'}
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
 
         {/* Labs Modal */}
         {showLabModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ width: '640px', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div style={{ width: 'min(640px, 95vw)', maxHeight: '90vh', backgroundColor: 'white', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', overflow: 'hidden', overflowY: 'auto' }}>
               <div style={{ padding: '25px 30px', borderBottom: '1px solid #F1F5F9' }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
                   <span style={{ position: 'absolute', left: '15px', color: '#64748B' }}>🔍</span>
@@ -716,48 +895,120 @@ const list = Array.isArray(data) ? data : [];
                 
                 {/* Hematology */}
                 <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>Hematology</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Full Blood Count (FBC)</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Blood Group & Rh Typing</span>
-                    </label>
-                  </div>
-                </div>
+  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>
+    Hematology
+  </h4>
+
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+    
+    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.fbc}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, fbc: !prev.fbc }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Full Blood Count (FBC)
+      </span>
+    </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.bloodGroup}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, bloodGroup: !prev.bloodGroup }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Blood Group & Rh Typing
+      </span>
+    </label>
+
+  </div>
+</div>
+
 
                 {/* Parasitology */}
                 <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>Parasitology</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" defaultChecked style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Malaria RDT / Smear</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Stool Analysis</span>
-                    </label>
-                  </div>
-                </div>
+  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>
+    Parasitology
+  </h4>
+
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+    
+    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.malaria}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, malaria: !prev.malaria }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Malaria RDT / Smear
+      </span>
+    </label>
+
+    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.stool}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, stool: !prev.stool }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Stool Analysis
+      </span>
+    </label>
+
+  </div>
+</div>
 
                 {/* Biochemistry */}
                 <div style={{ marginBottom: '25px' }}>
-                  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>Biochemistry</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Kidney Function Test KFT</span>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                      <input type="checkbox" style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>Liver Function Test LFT</span>
-                    </label>
-                  </div>
-                </div>
+  <h4 style={{ fontSize: '12px', fontWeight: '800', color: '#64748B', textTransform: 'uppercase', marginBottom: '15px' }}>
+    Biochemistry
+  </h4>
+
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+    
+    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.kft}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, kft: !prev.kft }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Kidney Function Test KFT
+      </span>
+    </label>
+
+    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={labChecks.lft}
+        onChange={() =>
+          setLabChecks(prev => ({ ...prev, lft: !prev.lft }))
+        }
+        style={{ transform: 'scale(1.2)' }}
+      />
+      <span style={{ fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+        Liver Function Test LFT
+      </span>
+    </label>
+
+  </div>
+</div>
 
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: '700', color: '#1E293B', display: 'block', marginBottom: '8px' }}>Clinical Indications / Notes:</label>
@@ -874,7 +1125,7 @@ const PatientProfile = () => {
   const [toastType, setToastType] = React.useState('success');
 
   // Lab checkbox state
-  const [labChecks, setLabChecks] = React.useState({ malaria: false, fbc: true, spo2: false, xray: false });
+  const [labChecks, setLabChecks] = React.useState({ malaria: false, fbc: false, spo2: false, xray: false });
   const [labSearch, setLabSearch] = React.useState('');
   const toggleLab = (key) => setLabChecks(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -909,6 +1160,7 @@ const PatientProfile = () => {
         setApiPatient(data.patient);
         setApiRecords(data.records || []);
         setApiPrescriptions(data.prescriptions || []);
+        setApiLabResults(data.lab_results || []);
       }
 
     } catch (err) {
@@ -931,8 +1183,9 @@ const latestRecord = apiRecords[0];
     personal: {
       name:   getField(apiPatient, 'name', 'full_name') || `${apiPatient.first_name || ''} ${apiPatient.last_name || ''}`.trim() || passedName || 'Unknown',
       id:     getField(apiPatient, 'patient_id', 'id', '_id') || '—',
-      age:    getField(apiPatient, 'age') || '—',
-      gender: getField(apiPatient, 'gender') || '—',
+age: apiPatient?.date_of_birth 
+  ? Math.floor((new Date() - new Date(apiPatient.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000))
+  : '—',      gender: getField(apiPatient, 'gender') || '—',
       status: getField(apiPatient, 'status') || 'ACTIVE',
     },
     vitals: {
@@ -964,12 +1217,7 @@ const latestRecord = apiRecords[0];
         { date: '—', d: 'No records found', t: '—', by: '—' },
       ];
 
-  const docsData = [
-    { name: 'Lab Result - Full Blood Count (FBC)', date: '19/02/2026', by: 'Dr. Bright Amofa', s: 'PENDING', sbg: '#FEF3C7', stc: '#B45309' },
-    { name: 'Patient Consent - Treatment',         date: '15/02/2026', by: 'Dr. Bright Amofa', s: 'READY',   sbg: '#DBEAFE', stc: '#1D4ED8' },
-    { name: 'Imaging - Chest X-Ray (PA)',           date: '12/02/2026', by: 'Dr. Bright Amofa', s: 'CANCELLED', sbg: '#FEE2E2', stc: '#DC2626' },
-    { name: 'Medical Certificate - Sick Leave',     date: '10/02/2026', by: 'Dr. Bright Amofa', s: 'CONFIRMED', sbg: '#DCFCE7', stc: '#16A34A' },
-  ];
+  
 
   const labTests = [
     { key: 'malaria', label: 'Malaria Parasite (MP)' },
@@ -1102,32 +1350,14 @@ const latestRecord = apiRecords[0];
             ))}
 
             {/* Fallback static docs if no API data yet */}
-            {apiLabResults.length === 0 && docsData.map((doc, i) => (
-              <div key={i} onClick={() => {
-                if (i === 0) setShowLabResult(true);
-                if (i === 1) setShowConsentModal(true);
-                if (i === 2) setShowXRayModal(true);
-                if (i === 3) setShowCertModal(true);
-              }} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#F8FAFC', padding: '20px 24px', borderRadius: '12px', border: '1px solid #E2E8F0', gap: '18px', cursor: 'pointer' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F1F5F9'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = '#F8FAFC'}
-              >
-                <div style={{ width: '38px', height: '44px', backgroundColor: '#3B82F6', borderRadius: '6px', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B' }}>{doc.name}</span>
-                    <span style={{ padding: '3px 12px', borderRadius: '20px', backgroundColor: doc.sbg, color: doc.stc, fontSize: '11px', fontWeight: '800', whiteSpace: 'nowrap' }}>{doc.s}</span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>
-                    Requested: {doc.date} &nbsp;|&nbsp; Requested by: {doc.by}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+            {apiLabResults.length === 0 && (
+  <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8' }}>
+    No documents yet.
+  </div>
+)}
+</div>
         )}
-
-        {/* Prescription Detail Banner Modal — click outside to close */}
+      {/* Prescription Detail Banner Modal — click outside to close */}
         {showPrescriptionDetail && (
           <div
             onClick={() => setShowPrescriptionDetail(false)}
@@ -2195,8 +2425,9 @@ const NursePatientProfile = () => {
     personal: {
       name:   gf(apiPatient,'name','full_name') || `${apiPatient.first_name||''} ${apiPatient.last_name||''}`.trim() || passedName || '—',
       id:     gf(apiPatient,'patient_id','id','_id') || '—',
-      age:    gf(apiPatient,'age') || '—',
-      gender: gf(apiPatient,'gender') || '—',
+age: apiPatient?.date_of_birth 
+  ? Math.floor((new Date() - new Date(apiPatient.date_of_birth)) / (365.25 * 24 * 60 * 60 * 1000))
+  : '—',      gender: gf(apiPatient,'gender') || '—',
       status: gf(apiPatient,'status') || 'ACTIVE',
     },
     vitals: {
@@ -2222,10 +2453,7 @@ const NursePatientProfile = () => {
       }))
     : [{ date: '—', d: 'No records found', t: '—', by: '—' }];
 
-  const docsData = [
-    { name: 'Lab Result - Full Blood Count (FBC)', date: '19/02/2026', by: 'Dr. Bright Amofa', s: 'PENDING', sbg: '#FEF3C7', stc: '#B45309' },
-    { name: 'Patient Consent - Treatment',         date: '15/02/2026', by: 'Dr. Bright Amofa', s: 'READY',   sbg: '#DBEAFE', stc: '#1D4ED8' },
-  ];
+  
 
   if (loading) return <div style={{ textAlign: 'center', padding: '60px', color: '#94A3B8', fontSize: '15px', fontWeight: '600' }}>Loading patient profile...</div>;
 
@@ -2292,24 +2520,49 @@ const NursePatientProfile = () => {
           </div>
         )}
 
-        {/* Documents Tab */}
         {activeTab === 'Documents' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {docsData.map((doc, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', backgroundColor: '#F8FAFC', padding: '20px 24px', borderRadius: '12px', border: '1px solid #E2E8F0', gap: '18px' }}>
-                <div style={{ width: '38px', height: '44px', backgroundColor: '#3B82F6', borderRadius: '6px', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B' }}>{doc.name}</span>
-                    <span style={{ padding: '3px 12px', borderRadius: '20px', backgroundColor: doc.sbg, color: doc.stc, fontSize: '11px', fontWeight: '800' }}>{doc.s}</span>
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#64748B' }}>Requested: {doc.date} &nbsp;|&nbsp; Requested by: {doc.by}</div>
-                </div>
-              </div>
-            ))}
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+    {apiLabResults.map((lab, i) => (
+      <div
+        key={`lab-${i}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          backgroundColor: '#F8FAFC',
+          padding: '20px 24px',
+          borderRadius: '12px',
+          border: '1px solid #E2E8F0',
+          gap: '18px'
+        }}
+      >
+        <div style={{ width: '38px', height: '44px', backgroundColor: '#3B82F6', borderRadius: '6px' }} />
+
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
+            <span style={{ fontWeight: '700', fontSize: '15px', color: '#1E293B' }}>
+              Lab Result — {lab.test_name || lab.test_type || 'Blood Test'}
+            </span>
           </div>
-        )}
+
+          <div style={{ fontSize: '13px', color: '#64748B' }}>
+            Date: {lab.created_at ? new Date(lab.created_at).toLocaleDateString('en-GB') : '—'}
+          </div>
+        </div>
       </div>
+    ))}
+
+    {apiLabResults.length === 0 && (
+      <div style={{ textAlign: 'center', padding: '40px', color: '#94A3B8' }}>
+        No documents yet.
+      </div>
+    )}
+
+  </div>
+)}
+</div>
+
+
 
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '20px', borderTop: '1px solid #E2E8F0', marginTop: '30px' }}>
@@ -2619,7 +2872,7 @@ const NurseTriage = ({ searchText }) => {
 // --- NURSE SCHEDULE VIEW (read-only doctor schedule) ---
 const NurseSchedule = ({ searchText }) => {
   const navigate = useNavigate();
-  const gridTemplate = '22% 15% 18% 17% 14% 14%';
+  const gridTemplate = '20% 18% 20% 17% 13% 12%';
   const token = localStorage.getItem('token');
   const user  = JSON.parse(localStorage.getItem('user') || '{}');
   const nurseName = localStorage.getItem('display_name') || user.name || 'Nurse';

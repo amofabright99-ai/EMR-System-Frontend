@@ -1618,16 +1618,17 @@ const PharmDashboard=()=>{
       </div>
       {loading?<p style={{textAlign:'center',padding:40,color:'#94A3B8'}}>Loading...</p>:
         <Table cols={[
-          {key:'pt',   label:'Patient',    w:'18%'},
-          {key:'med',  label:'Medication', w:'22%'},
-          {key:'dose', label:'Dosage',     w:'12%'},
-          {key:'freq', label:'Frequency',  w:'13%'},
-          {key:'dur',  label:'Duration',   w:'10%'},
-          {key:'stat', label:'Status',     w:'12%'},
-          {key:'act',  label:'Action',     w:'13%'},
-        ]} rows={filtered.map(p=>({
-          pt:  <div><p style={{fontWeight:700,color:'#0F172A',margin:0,fontSize:14}}>{p.patient_name||'—'}</p></div>,
-          med: <span style={{fontWeight:700}}>{p.medication_name||'—'}</span>,
+  {key:'pt',   label:'Patient',    w:'16%'},
+  {key:'dr',   label:'Doctor',     w:'14%'},
+  {key:'med',  label:'Medication', w:'20%'},
+  {key:'dose', label:'Dosage',     w:'10%'},
+  {key:'freq', label:'Frequency',  w:'11%'},
+  {key:'dur',  label:'Duration',   w:'9%'},
+  {key:'stat', label:'Status',     w:'10%'},
+  {key:'act',  label:'Action',     w:'10%'},
+]} rows={filtered.map(p=>({
+pt:  <div><p style={{fontWeight:700,color:'#0F172A',margin:0,fontSize:14}}>{p.patient_name||'—'}</p></div>,
+dr:  <span style={{color:'#64748B',fontSize:13}}>{p.doctor_name||'—'}</span>,          med: <span style={{fontWeight:700}}>{p.medication_name||'—'}</span>,
           dose:<span style={{color:'#64748B'}}>{p.dosage||'—'}</span>,
           freq:<span style={{color:'#64748B'}}>{p.frequency||'—'}</span>,
           dur: <span style={{color:'#64748B'}}>{p.duration||'—'}</span>,

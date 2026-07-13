@@ -1605,7 +1605,7 @@ const PharmDashboard=()=>{
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
 
-  const filtered=prescriptions.filter(p=>(p.patient_name||'').toLowerCase().includes(search.toLowerCase())||(p.medication_name||'').toLowerCase().includes(search.toLowerCase()));
+  wscriptions.filter(p=>(p.patient_name||'').toLowerCase().includes(search.toLowerCase())||(p.medication_name||'').toLowerCase().includes(search.toLowerCase()));
 
   return(
     <AL nav={pharmNav} title="Pharmacy Dashboard" searchText={search} setSearchText={setSearch}>

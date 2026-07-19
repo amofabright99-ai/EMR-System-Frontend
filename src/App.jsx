@@ -440,9 +440,9 @@ const Badge=({text,color='gray'})=>{
 const statusBadge=s=>{
   const v=(s||'').toLowerCase();
   const label=String(s||'—').replaceAll('_',' ');
-  if(['active','completed','dispensed','normal'].includes(v)) return <Badge text={label} color="green"/>;
+  if(['active','completed','dispensed','normal','success'].includes(v)) return <Badge text={label} color="green"/>;
   if(['waiting','pending','scheduled','awaiting_results'].includes(v)) return <Badge text={label} color="yellow"/>;
-  if(['cancelled','abnormal','critical','inactive'].includes(v)) return <Badge text={label} color="red"/>;
+  if(['cancelled','abnormal','critical','inactive','failure','failed'].includes(v)) return <Badge text={label} color="red"/>;
   if(['registered','triaged','in_consultation'].includes(v)) return <Badge text={label} color="blue"/>;
   return <Badge text={label}/>;
 };
@@ -2847,8 +2847,8 @@ const auditCategory=action=>{
   const value=String(action||'').toLowerCase();
   if(/login|logout|auth|user|account|staff|password|delete/.test(value))return 'Access';
   if(/lab|test|result|sample/.test(value))return 'Laboratory';
-  if(/dispens|prescri|medic|pharm/.test(value))return 'Medication';
-  if(/patient|triage|vital|consult|admit|record/.test(value))return 'Clinical';
+  if(/dispens|prescri|medic|pharm|inventory|stock/.test(value))return 'Medication';
+  if(/patient|triage|vital|consult|admit|record|encounter|appointment/.test(value))return 'Clinical';
   return 'System';
 };
 
@@ -2874,7 +2874,9 @@ const AdminDashboard=()=>{
     ]).then(([u,p,l])=>{
       setUsers(u.status==='fulfilled'&&Array.isArray(u.value)?u.value:[]);
       setPatients(p.status==='fulfilled'&&Array.isArray(p.value)?p.value:[]);
-      setLogs(l.status==='fulfilled'&&Array.isArray(l.value)?l.value:[]);
+      setLogs(l.status==='fulfilled'
+        ?(Array.isArray(l.value)?l.value:(l.value?.logs||[]))
+        :[]);
     }).finally(()=>setLoading(false));
   };
   React.useEffect(load,[]);
@@ -3136,22 +3138,28 @@ const AdminUsers=()=>{
 
 const AdminLogs=()=>{
   const [logs,setLogs]=React.useState([]);
+  const [summary,setSummary]=React.useState({total:0,today:0,unique_staff:0,affected_patients:0,failed:0});
   const [loading,setLoading]=React.useState(true);
   const [search,setSearch]=React.useState('');
   const [filter,setFilter]=React.useState('all');
+  const [selectedLog,setSelectedLog]=React.useState(null);
 
   const load=()=>{
     setLoading(true);
-    fetch(`${BASE_URL}/api/activity-logs`,{headers:ah()})
-      .then(r=>r.json()).then(d=>setLogs(Array.isArray(d)?d:[]))
+    fetch(`${BASE_URL}/api/activity-logs?limit=500`,{headers:ah()})
+      .then(r=>r.json()).then(d=>{
+        setLogs(Array.isArray(d)?d:(d.logs||[]));
+        if(d?.summary)setSummary(d.summary);
+      })
       .catch(()=>{}).finally(()=>setLoading(false));
   };
   React.useEffect(load,[]);
 
   const categories=['Clinical','Access','Laboratory','Medication','System'];
-  const todayCount=logs.filter(l=>l.created_at&&new Date(l.created_at).toDateString()===new Date().toDateString()).length;
-  const uniqueStaff=new Set(logs.map(l=>l.staff_name).filter(Boolean)).size;
-  const affectedPatients=new Set(logs.map(l=>l.patient_name).filter(Boolean)).size;
+  const todayCount=Number(summary.today||logs.filter(l=>l.created_at&&new Date(l.created_at).toDateString()===new Date().toDateString()).length);
+  const uniqueStaff=Number(summary.unique_staff||new Set(logs.map(l=>l.staff_name).filter(Boolean)).size);
+  const affectedPatients=Number(summary.affected_patients||new Set(logs.map(l=>l.patient_name).filter(Boolean)).size);
+  const failedCount=Number(summary.failed||logs.filter(l=>String(l.status||'success').toLowerCase()!=='success').length);
   const filtered=logs.filter(l=>{
     const query=search.toLowerCase();
     const matchesSearch=(l.staff_name||'').toLowerCase().includes(query)||
@@ -3163,20 +3171,20 @@ const AdminLogs=()=>{
 
   return(
     <AL nav={adminNav} title="Audit Trail" searchText={search} setSearchText={setSearch}>
-      <NursePageIntro kicker="Accountability & oversight" title="System activity trail" description="Review the activity records returned by the EMR audit service and trace actions back to staff, roles, and affected patients.">
+      <NursePageIntro kicker="Accountability & oversight" title="System activity trail" description="Trace automatically recorded access and changes back to the responsible staff member, patient, visit, device, and request.">
         <Btn onClick={load} v="ghost">↻ Refresh logs</Btn>
       </NursePageIntro>
 
       <div className="nurse-mini-stats">
-        <NurseMiniStat symbol="≡" value={loading?'—':logs.length} label="Total entries" color="#4F46E5" bg="#EEF2FF"/>
+        <NurseMiniStat symbol="≡" value={loading?'—':Number(summary.total||logs.length)} label="Total entries" color="#4F46E5" bg="#EEF2FF"/>
         <NurseMiniStat symbol="D" value={loading?'—':todayCount} label="Recorded today" color="#2563EB" bg="#EFF6FF"/>
         <NurseMiniStat symbol="S" value={loading?'—':uniqueStaff} label="Staff represented" color="#0F766E" bg="#ECFDF5"/>
-        <NurseMiniStat symbol="P" value={loading?'—':affectedPatients} label="Patients referenced" color="#B45309" bg="#FFFBEB"/>
+        <NurseMiniStat symbol="!" value={loading?'—':failedCount} label="Failed events" color="#DC2626" bg="#FEF2F2"/>
       </div>
 
       <section className="clinical-panel">
         <div className="clinical-panel-header">
-          <div><h3 style={{fontSize:17,color:'#1E293B'}}>Recorded activity</h3><p style={{fontSize:12.5,color:'#8490A3',marginTop:4}}>Categories are inferred from each recorded action for easier review.</p></div>
+          <div><h3 style={{fontSize:17,color:'#1E293B'}}>Recorded activity</h3><p style={{fontSize:12.5,color:'#8490A3',marginTop:4}}>{affectedPatients} patient record{affectedPatients===1?'':'s'} referenced · select Details for the complete event.</p></div>
           <div className="filter-pills">
             <button className={`filter-pill ${filter==='all'?'is-active':''}`} onClick={()=>setFilter('all')}>All · {logs.length}</button>
             {categories.map(category=>{
@@ -3189,23 +3197,59 @@ const AdminLogs=()=>{
       {loading?<p style={{textAlign:'center',padding:40,color:'#94A3B8'}}>Loading activity trail...</p>:
         filtered.length===0?<NurseEmptyState symbol="≡" title={logs.length?'No matching audit entries':'No audit entries returned'} description={logs.length?'Try another category or search term.':'The audit endpoint is available, but it has not returned any recorded actions yet.'}/>:
         <Table cols={[
-          {key:'ts',label:'Timestamp',w:'18%'},
-          {key:'staff',label:'Actor',w:'21%'},
-          {key:'role',label:'Role',w:'13%'},
-          {key:'act',label:'Recorded action',w:'25%'},
-          {key:'pt',label:'Patient reference',w:'15%'},
-          {key:'stat',label:'Category',w:'8%'},
+          {key:'ts',label:'Timestamp',w:'16%'},
+          {key:'staff',label:'Actor',w:'18%'},
+          {key:'role',label:'Role',w:'11%'},
+          {key:'act',label:'Recorded action',w:'23%'},
+          {key:'pt',label:'Patient reference',w:'14%'},
+          {key:'stat',label:'Category',w:'9%'},
+          {key:'detail',label:'',w:'9%'},
         ]} rows={filtered.map(l=>({
           ts:<div><span style={{color:'#475569',fontSize:12,fontWeight:650}}>{fmtDT(l.created_at)}</span><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>Server timestamp</p></div>,
           staff:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#EEF2FF',color:'#4F46E5'}}>{(l.staff_name||'S').charAt(0).toUpperCase()}</span><div><strong>{l.staff_name||'System'}</strong><small>Recorded actor</small></div></div>,
           role:<AdminRoleBadge role={l.role_name||'System'}/>,
-          act:<div><p style={{fontWeight:700,color:'#344056',fontSize:12.5,margin:0}}>{l.action||'Activity recorded'}</p><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>Audit event</p></div>,
+          act:<div><p style={{fontWeight:700,color:'#344056',fontSize:12.5,margin:0}}>{l.action||'Activity recorded'}</p><p style={{fontSize:10.5,color:String(l.status||'success').toLowerCase()==='success'?'#15803D':'#DC2626',marginTop:3,fontWeight:700}}>{l.status||'success'}</p></div>,
           pt:<span style={{color:'#64748B',fontSize:12.5}}>{l.patient_name||'Not patient-specific'}</span>,
-          stat:<AuditCategoryBadge action={l.action}/>
+          stat:<AuditCategoryBadge action={l.action}/>,
+          detail:<Btn onClick={()=>setSelectedLog(l)} v="ghost" sz="sm">Details</Btn>
         }))}/>
       }
         </div>
       </section>
+
+      <Modal open={!!selectedLog} onClose={()=>setSelectedLog(null)} title={`Audit Event #${selectedLog?.log_id||'—'}`} width={650}>
+        <MB>
+          <div className="vitals-patient-card" style={{background:'#F8FAFC'}}>
+            <span className="patient-avatar" style={{background:'#EEF2FF',color:'#4F46E5'}}>{(selectedLog?.staff_name||'S').charAt(0).toUpperCase()}</span>
+            <div style={{flex:1}}><strong style={{display:'block',color:'#263247'}}>{selectedLog?.staff_name||'System'}</strong><small style={{color:'#64748B'}}>{selectedLog?.role_name||'System'} · {fmtDT(selectedLog?.created_at)}</small></div>
+            {selectedLog&&statusBadge(selectedLog.status||'success')}
+          </div>
+          <div className="form-grid-2">
+            {[
+              ['Action',selectedLog?.action||'—'],
+              ['Category',selectedLog?auditCategory(selectedLog.action):'—'],
+              ['Patient',selectedLog?.patient_name||'Not patient-specific'],
+              ['Patient ID',selectedLog?.national_patient_id||'—'],
+              ['Entity',selectedLog?.entity_type?`${selectedLog.entity_type} · ${selectedLog.entity_id||'—'}`:'—'],
+              ['Encounter',selectedLog?.encounter_id||'—'],
+              ['Request ID',selectedLog?.request_id||'—'],
+              ['IP address',selectedLog?.ip_address||'—'],
+              ['HTTP request',selectedLog?.http_method?`${selectedLog.http_method} ${selectedLog.request_path||''}`:'—'],
+              ['Device',selectedLog?.device||'—'],
+            ].map(([label,value])=>(
+              <div key={label} style={{padding:'11px 12px',borderRadius:10,border:'1px solid #E5EAF1',background:'#fff',minWidth:0}}>
+                <p style={{fontSize:9.5,fontWeight:800,textTransform:'uppercase',letterSpacing:'.07em',color:'#94A3B8',marginBottom:5}}>{label}</p>
+                <p style={{fontSize:11.5,color:'#475569',lineHeight:1.5,wordBreak:'break-word'}}>{value}</p>
+              </div>
+            ))}
+          </div>
+          {(selectedLog?.old_value||selectedLog?.new_value)&&<div className="form-grid-2">
+            <div><p style={{fontSize:10,fontWeight:800,color:'#8490A3',marginBottom:6,textTransform:'uppercase'}}>Before</p><pre style={{whiteSpace:'pre-wrap',wordBreak:'break-word',fontSize:10.5,lineHeight:1.55,padding:12,borderRadius:10,background:'#FEF2F2',border:'1px solid #FEE2E2',color:'#7F1D1D',maxHeight:180,overflow:'auto'}}>{selectedLog.old_value||'Not recorded'}</pre></div>
+            <div><p style={{fontSize:10,fontWeight:800,color:'#8490A3',marginBottom:6,textTransform:'uppercase'}}>After</p><pre style={{whiteSpace:'pre-wrap',wordBreak:'break-word',fontSize:10.5,lineHeight:1.55,padding:12,borderRadius:10,background:'#F0FDF4',border:'1px solid #DCFCE7',color:'#14532D',maxHeight:180,overflow:'auto'}}>{selectedLog.new_value||'Not recorded'}</pre></div>
+          </div>}
+        </MB>
+        <MF><Btn onClick={()=>setSelectedLog(null)} v="blue">Close details</Btn></MF>
+      </Modal>
     </AL>
   );
 };

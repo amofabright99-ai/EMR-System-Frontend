@@ -893,7 +893,9 @@ const NurseDashboard=()=>{
   const [loading,setLoading]=React.useState(true);
   const [now,setNow]=React.useState(new Date());
   const [showReg,setShowReg]=React.useState(false);
-  const [f,setF]=React.useState({fn:'',ln:'',email:'',dob:'',phone:'',gender:'',regDate:''});
+  const emptyRegistration={fn:'',ln:'',email:'',password:'patient123',dob:'',phone:'',gender:'',regDate:''};
+  const [f,setF]=React.useState(emptyRegistration);
+  const [registeredPatient,setRegisteredPatient]=React.useState(null);
   const [sub,setSub]=React.useState(false);
 
   const loadStats=()=>{
@@ -922,11 +924,17 @@ const NurseDashboard=()=>{
     setSub(true);
     try{
       const r=await fetch(`${BASE_URL}/api/patients`,{method:'POST',headers:ah(),
-        body:JSON.stringify({full_name:`${f.fn} ${f.ln}`,email:f.email||undefined,
+        body:JSON.stringify({full_name:`${f.fn} ${f.ln}`,email:f.email||undefined,password:f.password||undefined,
           date_of_birth:f.dob,phone:f.phone,gender:f.gender,
           registration_date:f.regDate||new Date().toLocaleDateString('en-GB')})});
       const d=await r.json();
-      if(r.ok){toast.show('Patient registered!');setShowReg(false);setF({fn:'',ln:'',email:'',dob:'',phone:'',gender:'',regDate:''});loadStats();}
+      if(r.ok){
+        toast.show('Patient registered and added to the nurse queue.');
+        setShowReg(false);
+        setRegisteredPatient({...d.patient,temporary_password:f.password||'patient123'});
+        setF(emptyRegistration);
+        loadStats();
+      }
       else toast.show(d.message||'Failed.','error');
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
@@ -1077,7 +1085,8 @@ const NurseDashboard=()=>{
             <Field label="First Name" required><input value={f.fn} onChange={e=>setF({...f,fn:e.target.value})} placeholder="e.g. Kwame" style={inp}/></Field>
             <Field label="Last Name"  required><input value={f.ln} onChange={e=>setF({...f,ln:e.target.value})} placeholder="e.g. Mensah" style={inp}/></Field>
           </div>
-          <Field label="Email (optional)"><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="e.g. kwame@email.com" style={inp}/></Field>
+          <Field label="Email (required for patient portal)"><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="e.g. kwame@email.com" style={inp}/></Field>
+          <Field label="Temporary Portal Password"><input type="text" value={f.password} onChange={e=>setF({...f,password:e.target.value})} placeholder="Create a temporary password" style={inp}/></Field>
           <div className="form-grid-2">
             <Field label="Date of Birth (DD/MM/YYYY)"><input value={f.dob} onChange={e=>setF({...f,dob:e.target.value})} placeholder="e.g. 12/05/1990" style={inp}/></Field>
             <Field label="Phone"><input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="e.g. 0244123456" style={inp}/></Field>
@@ -1094,6 +1103,24 @@ const NurseDashboard=()=>{
         <MF>
           <Btn onClick={()=>setShowReg(false)} v="ghost">Cancel</Btn>
           <Btn onClick={register} disabled={sub} v="blue">{sub?'Registering...':'Register Patient'}</Btn>
+        </MF>
+      </Modal>
+      <Modal open={!!registeredPatient} onClose={()=>setRegisteredPatient(null)} title="Patient Registered" width={500}>
+        <MB>
+          <div style={{padding:'15px 17px',background:'#ECFDF5',border:'1px solid #A7F3D0',borderRadius:12,color:'#065F46',lineHeight:1.65}}>
+            <strong style={{display:'block',fontSize:14}}>{registeredPatient?.full_name}</strong>
+            <span style={{fontSize:12}}>The patient is now waiting for nurse triage. Registration alone does not place them in the doctor queue.</span>
+          </div>
+          <div style={{display:'grid',gap:9,padding:'13px 15px',background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:12,fontSize:12.5,color:'#475569'}}>
+            <div><strong>Patient ID:</strong> {registeredPatient?.national_patient_id||registeredPatient?.patient_id}</div>
+            <div><strong>Portal email:</strong> {registeredPatient?.email||'Not created — add an email before portal login'}</div>
+            {registeredPatient?.email&&<div><strong>Temporary password:</strong> {registeredPatient?.temporary_password}</div>}
+          </div>
+          <p style={{fontSize:11.5,color:'#64748B',lineHeight:1.6}}>Give these details to the patient securely. After the nurse saves triage, this same account will show the visit in My History.</p>
+        </MB>
+        <MF>
+          <Btn onClick={()=>setRegisteredPatient(null)} v="ghost">Close</Btn>
+          <Btn onClick={()=>{setRegisteredPatient(null);nv('/nurse-triage');}} v="blue">Open triage queue</Btn>
         </MF>
       </Modal>
     </AL>
@@ -1205,16 +1232,23 @@ const NurseTriage=()=>{
   const [loading,setLoading]=React.useState(true);
   const [sel,setSel]=React.useState(null);
   const [removeSel,setRemoveSel]=React.useState(null);
-  const [v,setV]=React.useState({temp:'',weight:'',bp:'',hr:'',chief:''});
+  const emptyVitals={temp:'',weight:'',bp:'',hr:'',priority:'P3'};
+  const [v,setV]=React.useState(emptyVitals);
   const [sub,setSub]=React.useState(false);
 
-  const load=()=>{
-    setLoading(true);
+  const load=(silent=false)=>{
+    if(!silent)setLoading(true);
     fetch(`${BASE_URL}/api/patients/triage/queue`,{headers:ah()})
       .then(r=>r.json()).then(d=>setQueue(Array.isArray(d)?d:[]))
-      .catch(()=>setQueue([])).finally(()=>setLoading(false));
+      .catch(()=>{if(!silent)setQueue([]);}).finally(()=>{if(!silent)setLoading(false);});
   };
-  React.useEffect(load,[]);
+  React.useEffect(()=>{
+    load();
+    const refresh=()=>load(true);
+    window.addEventListener('focus',refresh);
+    const timer=window.setInterval(refresh,15000);
+    return()=>{window.removeEventListener('focus',refresh);window.clearInterval(timer);};
+  },[]);
 
   const saveVitals=async()=>{
     if(!v.bp||!v.hr){toast.show('Blood pressure and heart rate are required.','error');return;}
@@ -1222,12 +1256,12 @@ const NurseTriage=()=>{
     try{
       const r1=await fetch(`${BASE_URL}/api/medical-records`,{method:'POST',headers:ah(),
         body:JSON.stringify({patient_id:sel.patient_id,temperature:v.temp,weight:v.weight,
-          blood_pressure:v.bp,pulse_rate:v.hr,chief_complaint:v.chief})});
+          blood_pressure:v.bp,pulse_rate:v.hr,triage_level:v.priority})});
+      const d=await r1.json().catch(()=>({}));
       if(r1.ok){
-        await fetch(`${BASE_URL}/api/patients/${sel.patient_id}/status`,{method:'PATCH',headers:ah(),body:JSON.stringify({status:'active'})});
-        toast.show(`${sel.full_name} sent to doctor queue.`);
-        setSel(null);setV({temp:'',weight:'',bp:'',hr:'',chief:''});load();
-      }else toast.show('Failed to save vitals.','error');
+        toast.show(`${sel.full_name} sent to the doctor. The visit is now in the patient's history.`);
+        setSel(null);setV(emptyVitals);load();
+      }else toast.show(d.message||'Failed to save triage and create the visit.','error');
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
 
@@ -1266,7 +1300,7 @@ const NurseTriage=()=>{
 
       <div className="workflow-strip" aria-label="Triage workflow">
         <div className="workflow-step"><span className="workflow-number">01</span><div><strong style={{fontSize:12,color:'#263247'}}>Select patient</strong><span style={{display:'block',fontSize:10.5,color:'#8490A3',marginTop:3}}>Prioritise by waiting time</span></div></div>
-        <div className="workflow-step"><span className="workflow-number">02</span><div><strong style={{fontSize:12,color:'#263247'}}>Capture vitals</strong><span style={{display:'block',fontSize:10.5,color:'#8490A3',marginTop:3}}>Record observations and complaint</span></div></div>
+        <div className="workflow-step"><span className="workflow-number">02</span><div><strong style={{fontSize:12,color:'#263247'}}>Capture vitals</strong><span style={{display:'block',fontSize:10.5,color:'#8490A3',marginTop:3}}>Record observations and priority</span></div></div>
         <div className="workflow-step"><span className="workflow-number">03</span><div><strong style={{fontSize:12,color:'#263247'}}>Send to doctor</strong><span style={{display:'block',fontSize:10.5,color:'#8490A3',marginTop:3}}>Complete clinical handoff</span></div></div>
       </div>
 
@@ -1300,11 +1334,11 @@ const NurseTriage=()=>{
           stat:<Badge text={waitMinutes(p)>30?'Review next':'Waiting'} color={waitMinutes(p)>30?'red':'yellow'}/>,
           act:<div style={{display:'flex',gap:7}}>
             <Btn onClick={()=>setSel(p)} v="blue" sz="sm">Start</Btn>
-            <Btn onClick={()=>setRemoveSel(p)} v="ghost" sz="sm">Remove</Btn>
+            <Btn onClick={()=>setRemoveSel(p)} v="ghost" sz="sm">Cancel wait</Btn>
           </div>
         }))} empty="No patients in triage queue."/>
       }
-      <Modal open={!!sel} onClose={()=>{setSel(null);setV({temp:'',weight:'',bp:'',hr:'',chief:''}); }} title={`Record Vitals — ${sel?.full_name||''}`} width={500}>
+      <Modal open={!!sel} onClose={()=>{setSel(null);setV(emptyVitals); }} title={`Record Vitals — ${sel?.full_name||''}`} width={500}>
         <MB>
           <div className="vitals-patient-card">
             <span className="patient-avatar">{(sel?.full_name||'P').charAt(0).toUpperCase()}</span>
@@ -1319,27 +1353,29 @@ const NurseTriage=()=>{
               <Field label="Heart Rate (BPM)" required><input inputMode="numeric" value={v.hr} onChange={e=>setV({...v,hr:e.target.value})} placeholder="e.g. 72" style={inp}/></Field>
             </div>
           </div>
-          <Field label="Chief Complaint / Reason for Visit">
-            <textarea value={v.chief} onChange={e=>setV({...v,chief:e.target.value})}
-              placeholder="e.g. Patient complains of persistent headache and fever for 3 days..."
-              style={{...inp,height:90,resize:'none'}}/>
+          <Field label="Triage Priority" required>
+            <select value={v.priority} onChange={e=>setV({...v,priority:e.target.value})} style={inp}>
+              <option value="P1">P1 — Emergency</option>
+              <option value="P2">P2 — Urgent</option>
+              <option value="P3">P3 — Routine</option>
+            </select>
           </Field>
         </MB>
         <MF>
-          <Btn onClick={()=>{setSel(null);setV({temp:'',weight:'',bp:'',hr:'',chief:''}); }} v="ghost">Cancel</Btn>
+          <Btn onClick={()=>{setSel(null);setV(emptyVitals); }} v="ghost">Cancel</Btn>
           <Btn onClick={saveVitals} disabled={sub} v="green">{sub?'Saving...':'Save & Send to Doctor'}</Btn>
         </MF>
       </Modal>
-      <Modal open={!!removeSel} onClose={()=>setRemoveSel(null)} title="Remove from triage queue?" width={430}>
+      <Modal open={!!removeSel} onClose={()=>setRemoveSel(null)} title="Cancel this patient’s wait?" width={430}>
         <MB>
           <div style={{padding:'14px 16px',backgroundColor:'#FEF2F2',borderRadius:12,border:'1px solid #FECACA',fontSize:13,color:'#7F1D1D',lineHeight:1.65}}>
-            <strong>{removeSel?.full_name||'This patient'}</strong> will be removed from the queue and marked inactive.
+            <strong>{removeSel?.full_name||'This patient'}</strong> will leave the nurse queue and be marked inactive.
           </div>
-          <p style={{fontSize:12,color:'#68758A',lineHeight:1.6}}>The patient can be re-admitted later from the Patient Registry.</p>
+          <p style={{fontSize:12,color:'#68758A',lineHeight:1.6}}>This does not send the patient to the doctor and does not create a hospital visit. Use <strong>Save &amp; Send to Doctor</strong> after recording triage for the normal clinical workflow.</p>
         </MB>
         <MF>
           <Btn onClick={()=>setRemoveSel(null)} v="ghost">Cancel</Btn>
-          <Btn onClick={()=>remove(removeSel)} v="danger">Remove patient</Btn>
+          <Btn onClick={()=>remove(removeSel)} v="danger">Cancel wait</Btn>
         </MF>
       </Modal>
     </AL>
@@ -1354,13 +1390,19 @@ const NurseSchedule=()=>{
   const [loading,setLoading]=React.useState(true);
   const [showConfirm,setShowConfirm]=React.useState(null);
 
-  const load=()=>{
-    setLoading(true);
+  const load=(silent=false)=>{
+    if(!silent)setLoading(true);
     fetch(`${BASE_URL}/api/patients/triage/queue`,{headers:ah()})
       .then(r=>r.json()).then(d=>setQueue(Array.isArray(d)?d:[]))
-      .catch(()=>{}).finally(()=>setLoading(false));
+      .catch(()=>{}).finally(()=>{if(!silent)setLoading(false);});
   };
-  React.useEffect(load,[]);
+  React.useEffect(()=>{
+    load();
+    const refresh=()=>load(true);
+    window.addEventListener('focus',refresh);
+    const timer=window.setInterval(refresh,15000);
+    return()=>{window.removeEventListener('focus',refresh);window.clearInterval(timer);};
+  },[]);
 
   // Remove a patient from the queue by setting their status to inactive
   const dismiss=async(p)=>{
@@ -1691,17 +1733,23 @@ const DoctorDashboard=()=>{
   const [stats,setStats]=React.useState({total_patients:'—',appointments_today:'—',pending_labs:'—'});
   const [loading,setLoading]=React.useState(true);
 
-  const load=()=>{
-    setLoading(true);
+  const load=(silent=false)=>{
+    if(!silent)setLoading(true);
     Promise.allSettled([
       fetch(`${BASE_URL}/api/patients/stats/doctor`,{headers:ah()}).then(r=>r.json()),
       fetch(`${BASE_URL}/api/patients/queue/doctor`,{headers:ah()}).then(r=>r.json())
     ]).then(([statsResult,queueResult])=>{
       if(statsResult.status==='fulfilled')setStats(statsResult.value||{});
       if(queueResult.status==='fulfilled')setQueue(Array.isArray(queueResult.value)?queueResult.value:[]);
-    }).finally(()=>setLoading(false));
+    }).finally(()=>{if(!silent)setLoading(false);});
   };
-  React.useEffect(load,[]);
+  React.useEffect(()=>{
+    load();
+    const refresh=()=>load(true);
+    window.addEventListener('focus',refresh);
+    const timer=window.setInterval(refresh,15000);
+    return()=>{window.removeEventListener('focus',refresh);window.clearInterval(timer);};
+  },[]);
 
   const rawName=localStorage.getItem('display_name')||'Doctor';
   const doctorName=/^dr\.?\s/i.test(rawName)?rawName:`Dr. ${rawName}`;
@@ -1749,7 +1797,7 @@ const DoctorDashboard=()=>{
                   <span className="patient-avatar" style={{background:'#EFF6FF',color:'#2563EB'}}>{(p.full_name||'P').charAt(0).toUpperCase()}</span>
                   <div><p style={{fontSize:13,fontWeight:800,color:'#263247'}}>{p.full_name||'Unnamed patient'}</p><p style={{fontSize:10.5,color:'#8490A3',marginTop:3}}>{p.chief_complaint||'Reason not recorded'}</p></div>
                 </div>
-                <div className="queue-preview-secondary"><p style={{fontSize:10,color:'#9AA5B5',textTransform:'uppercase',fontWeight:700}}>Arrival</p><p style={{fontSize:11.5,fontWeight:700,color:'#56647A',marginTop:3}}>{fmtArrival(p.registration_date)}</p></div>
+                <div className="queue-preview-secondary"><p style={{fontSize:10,color:'#9AA5B5',textTransform:'uppercase',fontWeight:700}}>Arrival</p><p style={{fontSize:11.5,fontWeight:700,color:'#56647A',marginTop:3}}>{fmtArrival(p.arrival_time||p.opened_at||p.registration_date)}</p></div>
                 <div className="queue-preview-secondary"><p style={{fontSize:10,color:'#9AA5B5',textTransform:'uppercase',fontWeight:700}}>Observations</p><p style={{fontSize:11.5,fontWeight:700,color:'#56647A',marginTop:3}}>BP {p.blood_pressure||'—'} · HR {p.pulse_rate||'—'}</p></div>
                 <Btn onClick={()=>nv('/doctor-consultation',{state:{patientId:p.patient_id}})} v={index===0?'blue':'ghost'} sz="sm">{index===0?'Consult':'Open'}</Btn>
               </div>
@@ -1835,13 +1883,19 @@ const DoctorSchedule=()=>{
   const [queue,setQueue]=React.useState([]);
   const [loading,setLoading]=React.useState(true);
   const [search,setSearch]=React.useState('');
-  const load=()=>{
-    setLoading(true);
+  const load=(silent=false)=>{
+    if(!silent)setLoading(true);
     fetch(`${BASE_URL}/api/patients/queue/doctor`,{headers:ah()})
       .then(r=>r.json()).then(d=>setQueue(Array.isArray(d)?d:[]))
-      .catch(()=>{}).finally(()=>setLoading(false));
+      .catch(()=>{}).finally(()=>{if(!silent)setLoading(false);});
   };
-  React.useEffect(load,[]);
+  React.useEffect(()=>{
+    load();
+    const refresh=()=>load(true);
+    window.addEventListener('focus',refresh);
+    const timer=window.setInterval(refresh,15000);
+    return()=>{window.removeEventListener('focus',refresh);window.clearInterval(timer);};
+  },[]);
   const filtered=queue.filter(p=>(p.full_name||'').toLowerCase().includes(search.toLowerCase())||(p.chief_complaint||'').toLowerCase().includes(search.toLowerCase()));
   const withVitals=queue.filter(p=>p.blood_pressure||p.pulse_rate).length;
   const withReason=queue.filter(p=>p.chief_complaint).length;
@@ -1879,7 +1933,7 @@ const DoctorSchedule=()=>{
         ]} rows={filtered.map(p=>({
           pos:<span style={{width:28,height:28,borderRadius:9,display:'grid',placeItems:'center',background:'#EFF6FF',color:'#2563EB',fontSize:11,fontWeight:800}}>{filtered.indexOf(p)+1}</span>,
           name:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#EFF6FF',color:'#2563EB'}}>{(p.full_name||'P').charAt(0).toUpperCase()}</span><div><span style={{fontWeight:800,color:'#172033'}}>{p.full_name||'Unnamed patient'}</span><span style={{fontSize:10.5,color:'#8490A3',display:'block',marginTop:2,fontFamily:'monospace'}}>{p.national_patient_id||p.patient_id}</span></div></div>,
-          time:<span style={{color:'#64748B',fontSize:12}}>{fmtArrival(p.registration_date)}</span>,
+          time:<span style={{color:'#64748B',fontSize:12}}>{fmtArrival(p.arrival_time||p.opened_at||p.registration_date)}</span>,
           reason:<span style={{color:p.chief_complaint?'#344056':'#8490A3'}}>{p.chief_complaint||'Reason not recorded'}</span>,
           vitals:<div><span style={{fontWeight:700,color:'#344056'}}>BP {p.blood_pressure||'—'}</span><span style={{fontSize:10.5,color:'#8490A3',display:'block',marginTop:2}}>Heart rate {p.pulse_rate||'—'} bpm</span></div>,
           act:<div style={{display:'flex',gap:7}}><Btn onClick={()=>nv('/doctor-patient-view',{state:{patientId:p.patient_id}})} v="ghost" sz="sm">Record</Btn><Btn onClick={()=>nv('/doctor-consultation',{state:{patientId:p.patient_id}})} v="blue" sz="sm">Consult</Btn></div>
@@ -1904,6 +1958,7 @@ const DoctorConsultation=()=>{
 
   const [data,setData]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
+  const [complaint,setComplaint]=React.useState('');
   const [notes,setNotes]=React.useState('');
   const [diag,setDiag]=React.useState('');
   // FIX: track existing record ID so we PATCH instead of POST when continuing
@@ -1933,6 +1988,7 @@ const DoctorConsultation=()=>{
         const doctorRec=activeEncounter?.medical_records?.[0]||null;
         setEncounterId(activeEncounter?.encounter_id||null);
         setRecordId(null);
+        setComplaint(activeEncounter?.chief_complaint||doctorRec?.chief_complaint||'');
         setNotes('');
         setDiag('');
         setSaved(false);
@@ -1961,6 +2017,7 @@ const DoctorConsultation=()=>{
       const r=await fetch(url,{method,headers:ah(),
         body:JSON.stringify({
           patient_id: patientId,
+          chief_complaint: complaint,
           notes: notes,
           diagnosis: diag,
           blood_pressure: vit.blood_pressure,
@@ -2111,6 +2168,10 @@ const pt = data.patient || data || {};
             <div><h3>Clinical documentation</h3><p>Record history, examination findings, observations, and relevant clinical context.</p></div>
             <span style={{padding:'5px 8px',borderRadius:8,background:'#F1F5F9',color:'#64748B',fontSize:10,fontWeight:800}}>SOAP notes</span>
           </div>
+          <Field label="Presenting complaint / reason for visit">
+            <input value={complaint} onChange={e=>{setComplaint(e.target.value);setSaved(false);}}
+              placeholder="Record the complaint described to the doctor..." style={{...inp,marginBottom:12}}/>
+          </Field>
           <textarea value={notes} onChange={e=>{setNotes(e.target.value);setSaved(false);}}
             aria-label="Clinical notes and observations" placeholder="Document presenting history, examination findings, clinical observations and assessment..."
             style={{...inp,height:224,resize:'vertical',lineHeight:1.65}}/>
@@ -2890,6 +2951,18 @@ const AuditCategoryBadge=({action})=>{
   return <Badge text={category} color={colors[category]}/>;
 };
 
+const auditMetadataOf=log=>{
+  const metadata=log?.metadata;
+  if(metadata&&typeof metadata==='object'&&!Array.isArray(metadata))return metadata;
+  if(typeof metadata==='string'){
+    try{return JSON.parse(metadata);}
+    catch{return{};}
+  }
+  return{};
+};
+
+const isHistoricalAuditLog=log=>auditMetadataOf(log).historical_backfill===true;
+
 const AdminDashboard=()=>{
   const nv=useNavigate();
   const [users,setUsers]=React.useState([]);
@@ -3227,16 +3300,19 @@ const AdminLogs=()=>{
   const affectedPatients=Number(summary.affected_patients||new Set(logs.map(l=>l.patient_name).filter(Boolean)).size);
   const failedCount=Number(summary.failed||logs.filter(l=>String(l.status||'success').toLowerCase()!=='success').length);
   const filtered=logs.filter(l=>{
-    const query=search.toLowerCase();
+    const query=search.trim().toLowerCase();
     const matchesSearch=(l.staff_name||'').toLowerCase().includes(query)||
       (l.action||'').toLowerCase().includes(query)||
       (l.role_name||'').toLowerCase().includes(query)||
-      (l.patient_name||'').toLowerCase().includes(query);
+      (l.patient_name||'').toLowerCase().includes(query)||
+      (l.national_patient_id||'').toLowerCase().includes(query);
     return matchesSearch&&(filter==='all'||auditCategory(l.action)===filter);
   });
+  const selectedMetadata=auditMetadataOf(selectedLog);
 
   return(
-    <AL nav={adminNav} title="Audit Trail" searchText={search} setSearchText={setSearch}>
+    <AL nav={adminNav} title="Audit Trail" searchText={search} setSearchText={setSearch}
+      searchPlaceholder="Actor, patient, ID, action...">
       <NursePageIntro kicker="Accountability & oversight" title="System activity trail" description="Trace automatically recorded access and changes back to the responsible staff member, patient, visit, device, and request.">
         <Btn onClick={load} v="ghost">↻ Refresh logs</Btn>
       </NursePageIntro>
@@ -3274,8 +3350,8 @@ const AdminLogs=()=>{
           ts:<div><span style={{color:'#475569',fontSize:12,fontWeight:650}}>{fmtDT(l.created_at)}</span><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>Server timestamp</p></div>,
           staff:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#EEF2FF',color:'#4F46E5'}}>{(l.staff_name||'S').charAt(0).toUpperCase()}</span><div><strong>{l.staff_name||'System'}</strong><small>Recorded actor</small></div></div>,
           role:<AdminRoleBadge role={l.role_name||'System'}/>,
-          act:<div><p style={{fontWeight:700,color:'#344056',fontSize:12.5,margin:0}}>{l.action||'Activity recorded'}</p><p style={{fontSize:10.5,color:String(l.status||'success').toLowerCase()==='success'?'#15803D':'#DC2626',marginTop:3,fontWeight:700}}>{l.status||'success'}</p></div>,
-          pt:<span style={{color:'#64748B',fontSize:12.5}}>{l.patient_name||'Not patient-specific'}</span>,
+          act:<div><p style={{fontWeight:700,color:'#344056',fontSize:12.5,margin:0}}>{l.action||'Activity recorded'}</p><p style={{fontSize:10.5,color:String(l.status||'success').toLowerCase()==='success'?'#15803D':'#DC2626',marginTop:3,fontWeight:700}}>{l.status||'success'}{isHistoricalAuditLog(l)?' · Historical reconstruction':''}</p></div>,
+          pt:<div><span style={{color:'#64748B',fontSize:12.5}}>{l.patient_name||'Not patient-specific'}</span>{l.national_patient_id&&<small style={{display:'block',color:'#94A3B8',marginTop:3,fontFamily:'monospace'}}>{l.national_patient_id}</small>}</div>,
           stat:<AuditCategoryBadge action={l.action}/>,
           detail:<Btn onClick={()=>setSelectedLog(l)} v="ghost" sz="sm">Details</Btn>
         }))}/>
@@ -3294,8 +3370,10 @@ const AdminLogs=()=>{
             {[
               ['Action',selectedLog?.action||'—'],
               ['Category',selectedLog?auditCategory(selectedLog.action):'—'],
+              ['Record origin',isHistoricalAuditLog(selectedLog)?'Historical reconstruction':'Real-time audit event'],
               ['Patient',selectedLog?.patient_name||'Not patient-specific'],
               ['Patient ID',selectedLog?.national_patient_id||'—'],
+              ['Backfill source',selectedMetadata.source_table?`${selectedMetadata.source_table} · ${selectedMetadata.source_id||'—'}`:'—'],
               ['Entity',selectedLog?.entity_type?`${selectedLog.entity_type} · ${selectedLog.entity_id||'—'}`:'—'],
               ['Encounter',selectedLog?.encounter_id||'—'],
               ['Request ID',selectedLog?.request_id||'—'],
@@ -3517,9 +3595,16 @@ const PatientHistory=()=>{
   const [data,setData]=React.useState(null);
   const [loading,setLoading]=React.useState(true);
   const [tab,setTab]=React.useState(location.state?.tab||'records');
-  React.useEffect(()=>{
+  const load=()=>{
+    setLoading(true);
     fetch(`${BASE_URL}/api/patients/me`,{headers:ah()})
       .then(r=>r.json()).then(d=>setData(d)).catch(()=>{}).finally(()=>setLoading(false));
+  };
+  React.useEffect(()=>{
+    load();
+    const refresh=()=>load();
+    window.addEventListener('focus',refresh);
+    return()=>window.removeEventListener('focus',refresh);
   },[]);
   const profile=data?.profile||{};
   const recs=data?.medical_records||[];
@@ -3537,6 +3622,7 @@ const PatientHistory=()=>{
       {loading?<p style={{textAlign:'center',padding:60,color:'#94A3B8'}}>Loading your records...</p>:<>
         <NursePageIntro kicker="Personal health record" title="Your care history, in one place" description="Review the information your care team has made available through your patient account.">
           {profile.national_patient_id&&<Badge text={`Patient ID · ${profile.national_patient_id}`} color="blue"/>}
+          <Btn onClick={load} v="ghost">↻ Refresh records</Btn>
         </NursePageIntro>
 
         <div className="nurse-mini-stats">

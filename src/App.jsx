@@ -33,6 +33,38 @@ const tk = () => {
 };
 const ah = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${tk()}` });
 
+if(typeof window!=='undefined'&&!window.__emrFetchInterceptorInstalled){
+  window.__emrFetchInterceptorInstalled=true;
+  const nativeFetch=window.fetch.bind(window);
+  const revokedSessionMessages=new Set([
+    'Invalid or expired token',
+    'This account is inactive. Contact an administrator.',
+    'This account is no longer available.'
+  ]);
+
+  window.fetch=async(...args)=>{
+    const request=args[0];
+    const options=args[1]||{};
+    const requestHeaders=new Headers(
+      options.headers||(request instanceof Request?request.headers:undefined)
+    );
+    const response=await nativeFetch(...args);
+
+    if(response.status===403&&requestHeaders.has('Authorization')){
+      const payload=await response.clone().json().catch(()=>null);
+      if(revokedSessionMessages.has(payload?.message)){
+        clearSessionAndRedirect(
+          payload.message==='This account is inactive. Contact an administrator.'
+            ?'Your account has been deactivated. Contact an administrator.'
+            :'Your session is no longer valid. Please sign in again.'
+        );
+      }
+    }
+
+    return response;
+  };
+}
+
 const useSessionNotice=()=>{
   const [notice]=React.useState(()=>{
     const value=sessionStorage.getItem('emr_session_notice')||'';
@@ -2991,9 +3023,10 @@ const AdminUsers=()=>{
   const [f,setF]=React.useState({full_name:'',email:'',password:'',role_id:''});
   const [sub,setSub]=React.useState(false);
   const [filter,setFilter]=React.useState('all');
-  const [removeTarget,setRemoveTarget]=React.useState(null);
-  const [removing,setRemoving]=React.useState(false);
+  const [accessTarget,setAccessTarget]=React.useState(null);
+  const [updatingAccess,setUpdatingAccess]=React.useState(false);
   const currentUser=JSON.parse(localStorage.getItem('user')||'{}');
+  const isInactiveAccount=user=>String(user?.staff_status||user?.status||'active').toLowerCase()==='inactive';
 
   const load=()=>{
     setLoading(true);
@@ -3015,18 +3048,26 @@ const AdminUsers=()=>{
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
 
-  const del=async()=>{
-    if(!removeTarget)return;
-    setRemoving(true);
+  const changeAccess=async()=>{
+    if(!accessTarget)return;
+    const nextStatus=isInactiveAccount(accessTarget)?'active':'inactive';
+    setUpdatingAccess(true);
     try{
-      const r=await fetch(`${BASE_URL}/api/users/${removeTarget.user_id}`,{method:'DELETE',headers:ah()});
+      const r=await fetch(`${BASE_URL}/api/users/${accessTarget.user_id}`,{
+        method:'PATCH',
+        headers:ah(),
+        body:JSON.stringify({staff_status:nextStatus})
+      });
+      const d=await r.json().catch(()=>({}));
       if(r.ok){
-        setStaff(prev=>prev.filter(s=>String(s.user_id)!==String(removeTarget.user_id)));
-        toast.show(`${removeTarget.full_name} removed.`);
-        setRemoveTarget(null);
-      }else toast.show('Failed to remove this account.','error');
+        setStaff(prev=>prev.map(s=>String(s.user_id)===String(accessTarget.user_id)
+          ?{...s,...(d.user||{}),staff_status:nextStatus}
+          :s));
+        toast.show(`${accessTarget.full_name} ${nextStatus==='active'?'reactivated':'deactivated'}.`);
+        setAccessTarget(null);
+      }else toast.show(d.message||`Failed to ${nextStatus==='active'?'reactivate':'deactivate'} this account.`,'error');
     }catch{toast.show('Network error.','error');}
-    finally{setRemoving(false);}
+    finally{setUpdatingAccess(false);}
   };
 
   const staffAccounts=staff.filter(s=>adminRoleOf(s).toLowerCase()!=='patient');
@@ -3085,7 +3126,9 @@ const AdminUsers=()=>{
           stat:statusBadge(s.staff_status||s.status||'active'),
           act:String(s.user_id)===String(currentUser.user_id)
             ?<Badge text="Current account" color="blue"/>
-            :<Btn onClick={()=>setRemoveTarget(s)} v="ghost" sz="sm" style={{color:'#DC2626'}}>Remove</Btn>
+            :isInactiveAccount(s)
+              ?<Btn onClick={()=>setAccessTarget(s)} v="blue" sz="sm">Reactivate</Btn>
+              :<Btn onClick={()=>setAccessTarget(s)} v="ghost" sz="sm" style={{color:'#DC2626'}}>Deactivate</Btn>
         }))} empty={search?'No accounts match your search.':'No accounts in this view.'}/>
       }
         </div>
@@ -3118,18 +3161,41 @@ const AdminUsers=()=>{
         </MF>
       </Modal>
 
-      <Modal open={!!removeTarget} onClose={()=>setRemoveTarget(null)} title="Remove User Access" width={440}>
+      <Modal
+        open={!!accessTarget}
+        onClose={()=>setAccessTarget(null)}
+        title={isInactiveAccount(accessTarget)?'Reactivate User Access':'Deactivate User Access'}
+        width={440}
+      >
         <MB>
-          <div className="vitals-patient-card" style={{background:'#FEF2F2',borderColor:'#FECACA'}}>
-            <span className="patient-avatar" style={{background:'#FEE2E2',color:'#DC2626'}}>{(removeTarget?.full_name||'U').charAt(0).toUpperCase()}</span>
-            <div><strong style={{display:'block',color:'#1E293B'}}>{removeTarget?.full_name}</strong><small style={{color:'#64748B'}}>{removeTarget?.email||'No email'} · {adminRoleOf(removeTarget)}</small></div>
+          <div className="vitals-patient-card" style={{
+            background:isInactiveAccount(accessTarget)?'#F0FDF4':'#FEF2F2',
+            borderColor:isInactiveAccount(accessTarget)?'#BBF7D0':'#FECACA'
+          }}>
+            <span className="patient-avatar" style={{
+              background:isInactiveAccount(accessTarget)?'#DCFCE7':'#FEE2E2',
+              color:isInactiveAccount(accessTarget)?'#15803D':'#DC2626'
+            }}>{(accessTarget?.full_name||'U').charAt(0).toUpperCase()}</span>
+            <div><strong style={{display:'block',color:'#1E293B'}}>{accessTarget?.full_name}</strong><small style={{color:'#64748B'}}>{accessTarget?.email||'No email'} · {adminRoleOf(accessTarget)}</small></div>
           </div>
-          <p style={{fontSize:13,color:'#64748B',lineHeight:1.65}}>This removes the account from the EMR. The user may immediately lose access to their assigned workflows.</p>
-          <div style={{padding:'11px 13px',borderRadius:10,background:'#FFFBEB',border:'1px solid #FDE68A',fontSize:11.5,color:'#92400E'}}><strong>Important:</strong> confirm this is the correct account before continuing.</div>
+          <p style={{fontSize:13,color:'#64748B',lineHeight:1.65}}>
+            {isInactiveAccount(accessTarget)
+              ?'This restores sign-in access to the user’s assigned EMR workflows.'
+              :'This disables sign-in and workflow access. The account and all linked clinical and audit history will remain safely stored.'}
+          </p>
+          <div style={{padding:'11px 13px',borderRadius:10,background:'#FFFBEB',border:'1px solid #FDE68A',fontSize:11.5,color:'#92400E'}}>
+            <strong>Important:</strong> {isInactiveAccount(accessTarget)
+              ?'confirm this staff member is authorized to regain access.'
+              :'active sessions may remain usable until their current token expires.'}
+          </div>
         </MB>
         <MF>
-          <Btn onClick={()=>setRemoveTarget(null)} v="ghost">Cancel</Btn>
-          <Btn onClick={del} disabled={removing} v="danger">{removing?'Removing...':'Remove account'}</Btn>
+          <Btn onClick={()=>setAccessTarget(null)} v="ghost">Cancel</Btn>
+          <Btn onClick={changeAccess} disabled={updatingAccess} v={isInactiveAccount(accessTarget)?'blue':'danger'}>
+            {updatingAccess
+              ?(isInactiveAccount(accessTarget)?'Reactivating...':'Deactivating...')
+              :(isInactiveAccount(accessTarget)?'Reactivate account':'Deactivate account')}
+          </Btn>
         </MF>
       </Modal>
     </AL>

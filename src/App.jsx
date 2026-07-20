@@ -331,6 +331,9 @@ const GStyles = () => (
     .nurse-empty-icon{width:60px;height:60px;border-radius:18px;display:grid;place-items:center;margin:0 auto 15px;background:#ecfdf5;color:#0f766e;font:800 25px/1 'Manrope',sans-serif;border:1px solid #ccfbf1;}
     .patient-name-cell{display:flex;align-items:center;gap:10px;min-width:0;}
     .patient-name-cell .patient-avatar{width:34px;height:34px;border-radius:10px;}
+    .patient-name-cell>div{display:flex;flex-direction:column;align-items:flex-start;min-width:0;}
+    .patient-name-cell strong{display:block;line-height:1.3;}
+    .patient-name-cell small{display:block;margin-top:3px;color:#8490a3;line-height:1.3;}
     .queue-alert{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 17px;margin-bottom:17px;border-radius:14px;border:1px solid #fde68a;background:#fffbeb;}
     .vitals-patient-card{display:flex;align-items:center;gap:12px;padding:13px 14px;background:#f0fdfa;border-radius:12px;border:1px solid #ccfbf1;}
     .consult-patient-banner{
@@ -351,9 +354,6 @@ const GStyles = () => (
     .consult-section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:15px;}
     .consult-section-heading h3{font-size:15px;color:#172033;}
     .consult-section-heading p{font-size:11px;color:#8490a3;line-height:1.5;margin-top:4px;}
-    .consult-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px;}
-    .consult-plan-action{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #e5eaf1;border-radius:12px;background:#fff;cursor:pointer;text-align:left;}
-    .consult-plan-action:hover{border-color:#bfdbfe;background:#f8fbff;transform:translateY(-1px);}
     .consult-records-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
     .consult-footer-actions{position:sticky;bottom:12px;z-index:40;display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #dfe6ee;border-radius:15px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);box-shadow:0 14px 35px rgba(16,27,50,.12);}
     .lab-test-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -408,7 +408,7 @@ const GStyles = () => (
       .consult-vitals-grid{grid-template-columns:1fr 1fr;}
       .consult-vital-card{padding:12px;gap:9px;}
       .consult-card{padding:17px;}
-      .consult-action-grid,.lab-test-grid{grid-template-columns:1fr;}
+      .lab-test-grid{grid-template-columns:1fr;}
       .consult-footer-actions{align-items:stretch;flex-direction:column;bottom:7px;}
       .consult-footer-actions>*{width:100%;}
     }
@@ -1686,10 +1686,10 @@ const ClinicalPatientProfile=({mode,nav})=>{
           )}
 
           {isDoctor&&tab==='prescriptions'&&(presc.length===0?
-            <NurseEmptyState symbol="Rx" title="No prescriptions recorded" description="Medication orders issued for this patient will appear here."/>:
+            <NurseEmptyState symbol="💊" title="No prescriptions recorded" description="Medication orders issued for this patient will appear here."/>:
             <Table cols={[{key:'med',label:'Medication',w:'29%'},{key:'directions',label:'Directions',w:'31%'},{key:'dur',label:'Duration',w:'14%'},{key:'date',label:'Issued',w:'14%'},{key:'stat',label:'Status',w:'12%'}]}
               rows={presc.map(p=>({
-                med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>Rx</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
+                med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>💊</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
                 directions:<span style={{fontSize:12.5,color:'#475569'}}>{p.dosage||'Dose not stated'} · {p.frequency||'Frequency not stated'}</span>,
                 dur:<span style={{fontSize:12.5,color:'#64748B'}}>{p.duration||'Not stated'}</span>,
                 date:<span style={{fontSize:12.5,color:'#64748B'}}>{fmtDate(p.issued_at||p.created_at)}</span>,
@@ -2191,16 +2191,6 @@ const pt = data.patient || data || {};
             <div role="status" style={{marginTop:9,padding:'9px 10px',fontSize:11,color:'#15803D',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:9,fontWeight:700}}>✓ Consultation record saved successfully.</div>
           )}
           {!saved&&recordId&&<p style={{fontSize:10.5,color:'#8490A3',marginTop:8}}>Changes are saved to the patient’s existing consultation record.</p>}
-          <div className="consult-action-grid" style={{marginTop:'auto',paddingTop:14}}>
-            <button type="button" className="consult-plan-action" onClick={()=>setShowLab(true)}>
-              <span className="nurse-icon-tile" style={{'--icon-bg':'#F5F3FF','--icon-color':'#7C3AED',width:34,height:34,fontSize:13}}>◇</span>
-              <span><strong style={{display:'block',fontSize:11.5,color:'#263247'}}>Request tests</strong><span style={{display:'block',fontSize:9.5,color:'#8490A3',marginTop:2}}>Send to laboratory</span></span>
-            </button>
-            <button type="button" className="consult-plan-action" onClick={()=>setShowRx(true)}>
-              <span className="nurse-icon-tile" style={{'--icon-bg':'#ECFDF5','--icon-color':'#0F766E',width:34,height:34,fontSize:13}}>Rx</span>
-              <span><strong style={{display:'block',fontSize:11.5,color:'#263247'}}>Prescribe</strong><span style={{display:'block',fontSize:9.5,color:'#8490A3',marginTop:2}}>Send to pharmacy</span></span>
-            </button>
-          </div>
         </section>
       </div>
 
@@ -2221,7 +2211,7 @@ const pt = data.patient || data || {};
 
       <div className="consult-footer-actions">
         <Btn onClick={()=>setShowLab(true)} v="ghost"><span style={{color:'#7C3AED'}}>◇</span> Request laboratory tests</Btn>
-        <Btn onClick={()=>setShowRx(true)} v="outline">Rx&nbsp; Prescribe medication</Btn>
+        <Btn onClick={()=>setShowRx(true)} v="outline"><span aria-hidden="true">💊</span> Prescribe medication</Btn>
         <div style={{flex:1}}/>
         <span style={{fontSize:10.5,color:saved?'#15803D':'#8490A3',fontWeight:700}}>{saved?'✓ Latest changes saved':recordId?'Existing record loaded':'New consultation'}</span>
         <Btn onClick={closeConsultation} disabled={closing} v="primary">{closing?'Closing visit...':'Complete visit & return'}</Btn>
@@ -2611,7 +2601,7 @@ const LabQueue=()=>{
    PHARMACIST MODULE
 ══════════════════════════════════════ */
 const pharmNav=[
-  {path:'/pharm-dashboard',label:'Dispensing', icon:'Rx'},
+  {path:'/pharm-dashboard',label:'Dispensing', icon:'💊'},
   {path:'/pharm-inventory',label:'Inventory', icon:'▦'},
 ];
 
@@ -2712,7 +2702,7 @@ const PharmDashboard=()=>{
       </section>
 
       <div className="nurse-kpi-grid">
-        <RoleKpi label="Pending dispensing" value={pending.length} symbol="Rx" color="#B45309" bg="#FFFBEB" meta="Prescriptions requiring action" loading={loading}/>
+        <RoleKpi label="Pending dispensing" value={pending.length} symbol="💊" color="#B45309" bg="#FFFBEB" meta="Prescriptions requiring action" loading={loading}/>
         <RoleKpi label="Dispensed records" value={dispensed.length} symbol="✓" color="#15803D" bg="#F0FDF4" meta="All completed prescriptions returned" loading={loading}/>
         <RoleKpi label="Inventory batches" value={inventory.length} symbol="▦" color="#2563EB" bg="#EFF6FF" meta="Batches available for review" loading={loading}/>
         <RoleKpi label="Stock alerts" value={stockAlerts.length} symbol="!" color="#DC2626" bg="#FEF2F2" meta="Low, expired or expiring stock" loading={loading}/>
@@ -2880,7 +2870,7 @@ const PharmInventory=()=>{
           {key:'exp',label:'Expiry',w:'13%'},
           {key:'stat',label:'Status',w:'11%'},
         ]} rows={filtered.map(m=>({
-          name:<div className="patient-name-cell"><span className="patient-avatar">Rx</span><div><strong>{m.medicine_name||'Unnamed medication'}</strong><small>Inventory item #{m.medicine_id||'—'}</small></div></div>,
+          name:<div className="patient-name-cell"><span className="patient-avatar">💊</span><div><strong>{m.medicine_name||'Unnamed medication'}</strong><small>Inventory item #{m.medicine_id||'—'}</small></div></div>,
           cat:<span style={{color:'#64748B',fontSize:12.5}}>{m.category||'General'}</span>,
           batch:<span style={{color:'#475569',fontFamily:'monospace',fontSize:12.5,fontWeight:700}}>{m.batch_number||'—'}</span>,
           qty:<div><strong style={{fontSize:13.5,color:['low','out'].includes(pharmacyInventoryState(m))?'#DC2626':'#1E293B'}}>{Number(m.quantity||0).toLocaleString()} units</strong><p style={{fontSize:11,color:'#94A3B8',marginTop:3}}>{Number(m.quantity||0)>0?'Available to allocate':'No units available'}</p></div>,
@@ -3482,7 +3472,7 @@ const PatientDashboard=()=>{
 
       <div className="nurse-kpi-grid">
         <RoleKpi label="Upcoming appointments" value={upcoming.length} symbol="D" color="#2563EB" bg="#EFF6FF" meta="Scheduled or awaiting confirmation" loading={loading}/>
-        <RoleKpi label="Medication orders" value={presc.length} symbol="Rx" color="#7C3AED" bg="#F5F3FF" meta={`${pendingMedication.length} awaiting dispensing`} loading={loading}/>
+        <RoleKpi label="Medication orders" value={presc.length} symbol="💊" color="#7C3AED" bg="#F5F3FF" meta={`${pendingMedication.length} awaiting dispensing`} loading={loading}/>
         <RoleKpi label="Lab results" value={labs.length} symbol="L" color="#15803D" bg="#F0FDF4" meta="Results available in your record" loading={loading}/>
         <RoleKpi label="Care records" value={records.length} symbol="≡" color="#0F766E" bg="#ECFDF5" meta="Documented clinical visits" loading={loading}/>
       </div>
@@ -3520,7 +3510,7 @@ const PatientDashboard=()=>{
               <span style={{marginLeft:'auto',color:'#2563EB'}}>→</span>
             </button>
             <button className="quick-action-card" onClick={()=>nv('/patient-history',{state:{tab:'prescriptions'}})}>
-              <span className="nurse-icon-tile" style={{'--icon-bg':'#F5F3FF','--icon-color':'#7C3AED'}}>Rx</span>
+              <span className="nurse-icon-tile" style={{'--icon-bg':'#F5F3FF','--icon-color':'#7C3AED'}}>💊</span>
               <span><strong style={{display:'block',fontSize:13,color:'#263247'}}>Prescriptions</strong><small style={{color:'#8490A3'}}>{presc.length} medication order{presc.length===1?'':'s'}</small></span>
               <span style={{marginLeft:'auto',color:'#7C3AED'}}>→</span>
             </button>
@@ -3534,14 +3524,14 @@ const PatientDashboard=()=>{
           <Btn onClick={()=>nv('/patient-history',{state:{tab:'prescriptions'}})} v="ghost" sz="sm">View all →</Btn>
         </div>
         <div style={{padding:18}}>
-          {presc.length===0?<NurseEmptyState symbol="Rx" title="No prescriptions available" description="Prescriptions issued by your care team will appear here with dosage and dispensing information."/>:
+          {presc.length===0?<NurseEmptyState symbol="💊" title="No prescriptions available" description="Prescriptions issued by your care team will appear here with dosage and dispensing information."/>:
             <Table cols={[
               {key:'med',label:'Medication',w:'29%'},
               {key:'directions',label:'How to take it',w:'35%'},
               {key:'dur',label:'Duration',w:'16%'},
               {key:'stat',label:'Status',w:'20%'},
             ]} rows={presc.slice(0,5).map(p=>({
-              med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>Rx</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
+              med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>💊</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
               directions:<span style={{fontSize:12.5,color:'#475569'}}>{p.dosage||'Dose not stated'} · {p.frequency||'Frequency not stated'}</span>,
               dur:<span style={{fontSize:12.5,color:'#64748B'}}>{p.duration||'Not stated'}</span>,
               stat:statusBadge(p.status||'pending')
@@ -3614,7 +3604,7 @@ const PatientHistory=()=>{
   const tabs=[
     {key:'records',label:'Visit timeline',count:encounters.length,symbol:'≡'},
     {key:'labs',label:'Lab results',count:labs.length,symbol:'L'},
-    {key:'prescriptions',label:'Prescriptions',count:presc.length,symbol:'Rx'},
+    {key:'prescriptions',label:'Prescriptions',count:presc.length,symbol:'💊'},
   ];
 
   return(
@@ -3628,7 +3618,7 @@ const PatientHistory=()=>{
         <div className="nurse-mini-stats">
           <NurseMiniStat symbol="≡" value={encounters.length} label="Hospital visits" color="#0F766E" bg="#ECFDF5"/>
           <NurseMiniStat symbol="L" value={labs.length} label="Lab results" color="#2563EB" bg="#EFF6FF"/>
-          <NurseMiniStat symbol="Rx" value={presc.length} label="Prescriptions" color="#7C3AED" bg="#F5F3FF"/>
+          <NurseMiniStat symbol="💊" value={presc.length} label="Prescriptions" color="#7C3AED" bg="#F5F3FF"/>
           <NurseMiniStat symbol="✓" value={labs.filter(l=>String(l.result_status||'').toLowerCase()==='normal').length} label="Normal lab results" color="#15803D" bg="#F0FDF4"/>
         </div>
 
@@ -3696,10 +3686,10 @@ const PatientHistory=()=>{
             }))}/>
         )}
         {tab==='prescriptions'&&(presc.length===0?
-          <NurseEmptyState symbol="Rx" title="No prescriptions available yet" description="Medication orders issued by your doctor will appear here with dosage and dispensing information."/>:
+          <NurseEmptyState symbol="💊" title="No prescriptions available yet" description="Medication orders issued by your doctor will appear here with dosage and dispensing information."/>:
           <Table cols={[{key:'med',label:'Medication',w:'29%'},{key:'directions',label:'Directions',w:'32%'},{key:'dur',label:'Duration',w:'14%'},{key:'date',label:'Issued',w:'13%'},{key:'stat',label:'Status',w:'12%'}]}
             rows={presc.map(p=>({
-              med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>Rx</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
+              med:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#F5F3FF',color:'#7C3AED'}}>💊</span><div><strong>{p.medication_name||'Medication'}</strong><small>Prescription order</small></div></div>,
               directions:<span style={{fontSize:12.5,color:'#475569'}}>{p.dosage||'Dose not stated'} · {p.frequency||'Frequency not stated'}</span>,
               dur:<span style={{fontSize:12.5,color:'#64748B'}}>{p.duration||'Not stated'}</span>,
               date:<span style={{fontSize:12.5,color:'#64748B'}}>{fmtDate(p.issued_at||p.created_at)}</span>,

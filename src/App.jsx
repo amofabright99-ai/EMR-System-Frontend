@@ -2806,13 +2806,16 @@ const PharmInventory=()=>{
 
   const add=async()=>{
     if(!f.medicine_name||!f.batch_number||!f.quantity||!f.expiry_date){toast.show('Please fill required fields.','error');return;}
+    const quantity=Number(f.quantity);
+    if(!Number.isInteger(quantity)||quantity<=0){toast.show('Quantity must be a positive whole number.','error');return;}
     setSub(true);
     try{
       const r=await fetch(`${BASE_URL}/api/inventory`,{method:'POST',headers:ah(),
         body:JSON.stringify({medicine_name:f.medicine_name,category:f.category||'General',
-          batch_number:f.batch_number,quantity:parseInt(f.quantity),expiry_date:f.expiry_date})});
+          batch_number:f.batch_number,quantity,expiry_date:f.expiry_date})});
+      const body=await r.json().catch(()=>({}));
       if(r.ok){toast.show('Batch added!');setShowAdd(false);setF({medicine_name:'',category:'',batch_number:'',quantity:'',expiry_date:''});load();}
-      else toast.show('Failed.','error');
+      else toast.show(body.message||'Failed to add medication batch.','error');
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
 

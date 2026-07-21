@@ -2606,6 +2606,7 @@ const pharmNav=[
 ];
 
 const pharmacyInventoryState=(item)=>{
+  if(String(item.inventory_status||'active').toLowerCase()==='disposed')return 'disposed';
   const quantity=Number(item.quantity||0);
   const expiry=item.expiry_date?new Date(item.expiry_date):null;
   const today=new Date();
@@ -2624,6 +2625,7 @@ const PharmacyStockBadge=({state})=>{
     out:{text:'Out of stock',color:'red'},
     expiring:{text:'Expiring soon',color:'amber'},
     expired:{text:'Expired',color:'red'},
+    disposed:{text:'Disposed',color:'gray'},
   };
   const badge=badges[state]||badges.in;
   return <Badge text={badge.text} color={badge.color}/>;
@@ -2672,8 +2674,8 @@ const PharmDashboard=()=>{
   const statusOf=p=>(p.status||'pending').toLowerCase();
   const pending=prescriptions.filter(p=>statusOf(p)!=='dispensed');
   const dispensed=prescriptions.filter(p=>statusOf(p)==='dispensed');
-  const stockAlerts=inventory.filter(m=>pharmacyInventoryState(m)!=='in');
-  const availableInventory=inventory.filter(m=>!['out','expired'].includes(pharmacyInventoryState(m)));
+  const stockAlerts=inventory.filter(m=>!['in','disposed'].includes(pharmacyInventoryState(m)));
+  const availableInventory=inventory.filter(m=>!['out','expired','disposed'].includes(pharmacyInventoryState(m)));
   const selectedMedicine=inventory.find(m=>String(m.medicine_id)===String(medicineId));
   const filtered=prescriptions.filter(p=>{
     const matchesSearch=(p.patient_name||'').toLowerCase().includes(search.toLowerCase())||
@@ -2795,6 +2797,9 @@ const PharmInventory=()=>{
   const [sub,setSub]=React.useState(false);
   const [search,setSearch]=React.useState('');
   const [filter,setFilter]=React.useState('all');
+  const [disposeTarget,setDisposeTarget]=React.useState(null);
+  const [disposeReason,setDisposeReason]=React.useState('Expired stock removed from usable inventory');
+  const [disposing,setDisposing]=React.useState(false);
 
   const load=()=>{
     setLoading(true);
@@ -2819,21 +2824,44 @@ const PharmInventory=()=>{
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
 
-  const counts=inventory.reduce((acc,item)=>{acc[pharmacyInventoryState(item)]++;return acc;},{in:0,low:0,out:0,expiring:0,expired:0});
+  const disposeBatch=async()=>{
+    if(!disposeTarget)return;
+    const reason=disposeReason.trim();
+    if(reason.length<3){toast.show('Please provide a disposal reason.','error');return;}
+    setDisposing(true);
+    try{
+      const r=await fetch(`${BASE_URL}/api/inventory/${disposeTarget.medicine_id}/dispose`,{
+        method:'PATCH',headers:ah(),body:JSON.stringify({reason})
+      });
+      const body=await r.json().catch(()=>({}));
+      if(r.ok){
+        toast.show('Batch disposed and archived successfully.');
+        setDisposeTarget(null);
+        setDisposeReason('Expired stock removed from usable inventory');
+        load();
+      }else toast.show(body.message||'Failed to dispose medication batch.','error');
+    }catch{toast.show('Network error.','error');}
+    finally{setDisposing(false);}
+  };
+
+  const counts=inventory.reduce((acc,item)=>{acc[pharmacyInventoryState(item)]++;return acc;},{in:0,low:0,out:0,expiring:0,expired:0,disposed:0});
   const alertCount=counts.low+counts.out+counts.expiring+counts.expired;
+  const activeCount=inventory.length-counts.disposed;
   const filtered=inventory.filter(item=>{
     const matchesSearch=(item.medicine_name||'').toLowerCase().includes(search.toLowerCase())||
       (item.category||'').toLowerCase().includes(search.toLowerCase())||
       (item.batch_number||'').toLowerCase().includes(search.toLowerCase());
-    return matchesSearch&&(filter==='all'||pharmacyInventoryState(item)===filter);
+    const state=pharmacyInventoryState(item);
+    return matchesSearch&&(filter==='all'?state!=='disposed':state===filter);
   });
   const filterOptions=[
-    ['all','All batches',inventory.length],
+    ['all','Active batches',activeCount],
     ['in','In stock',counts.in],
     ['low','Low',counts.low],
     ['out','Out',counts.out],
     ['expiring','Expiring',counts.expiring],
     ['expired','Expired',counts.expired],
+    ['disposed','Disposed archive',counts.disposed],
   ];
 
   return(
@@ -2845,10 +2873,10 @@ const PharmInventory=()=>{
       </NursePageIntro>
 
       <div className="nurse-mini-stats">
-        <NurseMiniStat symbol="▦" value={loading?'—':inventory.length} label="Total batches" color="#2563EB" bg="#EFF6FF"/>
+        <NurseMiniStat symbol="▦" value={loading?'—':activeCount} label="Active batches" color="#2563EB" bg="#EFF6FF"/>
         <NurseMiniStat symbol="✓" value={loading?'—':counts.in} label="Healthy stock" color="#15803D" bg="#F0FDF4"/>
         <NurseMiniStat symbol="!" value={loading?'—':alertCount} label="Stock alerts" color="#B45309" bg="#FFFBEB"/>
-        <NurseMiniStat symbol="×" value={loading?'—':counts.expired+counts.out} label="Unavailable batches" color="#DC2626" bg="#FEF2F2"/>
+        <NurseMiniStat symbol="×" value={loading?'—':counts.disposed} label="Disposed archive" color="#64748B" bg="#F8FAFC"/>
       </div>
 
       <section className="clinical-panel">
@@ -2866,19 +2894,25 @@ const PharmInventory=()=>{
         <div style={{padding:18}}>
       {loading?<p style={{textAlign:'center',padding:40,color:'#94A3B8'}}>Loading...</p>:
         <Table cols={[
-          {key:'name',label:'Medication',w:'29%'},
-          {key:'cat',label:'Category',w:'16%'},
-          {key:'batch',label:'Batch',w:'17%'},
-          {key:'qty',label:'Available stock',w:'14%'},
-          {key:'exp',label:'Expiry',w:'13%'},
+          {key:'name',label:'Medication',w:'24%'},
+          {key:'cat',label:'Category',w:'13%'},
+          {key:'batch',label:'Batch',w:'14%'},
+          {key:'qty',label:'Stock',w:'13%'},
+          {key:'exp',label:'Expiry',w:'12%'},
           {key:'stat',label:'Status',w:'11%'},
+          {key:'act',label:'Action',w:'13%'},
         ]} rows={filtered.map(m=>({
           name:<div className="patient-name-cell"><span className="patient-avatar">💊</span><div><strong>{m.medicine_name||'Unnamed medication'}</strong><small>Inventory item #{m.medicine_id||'—'}</small></div></div>,
           cat:<span style={{color:'#64748B',fontSize:12.5}}>{m.category||'General'}</span>,
           batch:<span style={{color:'#475569',fontFamily:'monospace',fontSize:12.5,fontWeight:700}}>{m.batch_number||'—'}</span>,
-          qty:<div><strong style={{fontSize:13.5,color:['low','out'].includes(pharmacyInventoryState(m))?'#DC2626':'#1E293B'}}>{Number(m.quantity||0).toLocaleString()} units</strong><p style={{fontSize:11,color:'#94A3B8',marginTop:3}}>{Number(m.quantity||0)>0?'Available to allocate':'No units available'}</p></div>,
+          qty:<div><strong style={{fontSize:13.5,color:['low','out'].includes(pharmacyInventoryState(m))?'#DC2626':'#1E293B'}}>{Number(pharmacyInventoryState(m)==='disposed'?m.disposed_quantity:m.quantity||0).toLocaleString()} units</strong><p style={{fontSize:11,color:'#94A3B8',marginTop:3}}>{pharmacyInventoryState(m)==='disposed'?'Removed from stock':Number(m.quantity||0)>0?'Available to allocate':'No units available'}</p></div>,
           exp:<div><span style={{color:'#475569',fontSize:12.5,fontWeight:650}}>{fmtDate(m.expiry_date)}</span><p style={{fontSize:11,color:'#94A3B8',marginTop:3}}>Batch expiry</p></div>,
-          stat:<PharmacyStockBadge state={pharmacyInventoryState(m)}/>
+          stat:<PharmacyStockBadge state={pharmacyInventoryState(m)}/>,
+          act:pharmacyInventoryState(m)==='disposed'
+            ?<div title={m.disposal_reason||''}><strong style={{display:'block',fontSize:11.5,color:'#64748B'}}>{m.disposed_at?fmtDate(m.disposed_at):'Archived'}</strong><small style={{display:'block',maxWidth:145,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:10.5,color:'#94A3B8',marginTop:3}}>{m.disposal_reason||'Disposal recorded'}</small></div>
+            :['expired','out'].includes(pharmacyInventoryState(m))
+              ?<Btn onClick={()=>{setDisposeTarget(m);setDisposeReason(pharmacyInventoryState(m)==='expired'?'Expired stock removed from usable inventory':'Empty batch closed and archived');}} v="danger" sz="sm">Dispose</Btn>
+              :<span style={{fontSize:11.5,color:'#94A3B8'}}>No action</span>
         }))} empty={search?'No inventory batches match your search.':'No batches in this stock view.'}/>
       }
         </div>
@@ -2901,6 +2935,24 @@ const PharmInventory=()=>{
         <MF>
           <Btn onClick={()=>setShowAdd(false)} v="ghost">Cancel</Btn>
           <Btn onClick={add} disabled={sub} v="blue">{sub?'Adding...':'Register batch'}</Btn>
+        </MF>
+      </Modal>
+
+      <Modal open={!!disposeTarget} onClose={()=>!disposing&&setDisposeTarget(null)} title="Dispose Medication Batch" width={500}>
+        <MB>
+          <div style={{padding:'13px 14px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:12}}>
+            <p style={{fontSize:13,fontWeight:800,color:'#991B1B',marginBottom:4}}>{disposeTarget?.medicine_name}</p>
+            <p style={{fontSize:11.5,color:'#B45353',lineHeight:1.5}}>Batch {disposeTarget?.batch_number||'—'} · {Number(disposeTarget?.quantity||0).toLocaleString()} units</p>
+          </div>
+          <p style={{fontSize:12.5,color:'#64748B',lineHeight:1.6,margin:0}}>Disposal makes this batch unavailable for dispensing. The batch is archived rather than deleted so the hospital retains a complete stock and audit history.</p>
+          <Field label="Disposal reason" required>
+            <textarea value={disposeReason} onChange={e=>setDisposeReason(e.target.value)} placeholder="State why this batch is being removed from usable stock..." style={{...inp,minHeight:92,resize:'vertical',lineHeight:1.5}}/>
+          </Field>
+          <div style={{padding:'10px 13px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:10,fontSize:11.5,color:'#92400E',lineHeight:1.5}}><strong>Confirm carefully.</strong> This action cannot be reversed from the pharmacy interface.</div>
+        </MB>
+        <MF>
+          <Btn onClick={()=>setDisposeTarget(null)} disabled={disposing} v="ghost">Cancel</Btn>
+          <Btn onClick={disposeBatch} disabled={disposing} v="danger">{disposing?'Disposing...':'Confirm disposal'}</Btn>
         </MF>
       </Modal>
     </AL>

@@ -654,7 +654,7 @@ const BrandIdentity=()=>(
     <div className="brand-mark">+</div>
     <div>
       <div style={{fontFamily:'Manrope',fontWeight:800,fontSize:14,letterSpacing:.25}}>HEALTHCARE EMR</div>
-      <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:3}}>Care connected</div>
+      <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:3}}></div>
     </div>
   </div>
 );
@@ -667,12 +667,12 @@ const AuthBrand=({kicker='Secure digital care',title,copy})=>(
       <h1 className="auth-title">{title}</h1>
       <p className="auth-copy">{copy}</p>
       <div className="auth-points">
-        <span className="auth-point">✓ One patient record</span>
-        <span className="auth-point">✓ Role-based access</span>
-        <span className="auth-point">✓ Built for Ghana</span>
+        <span className="auth-point">✓ Complete patient history</span>
+        <span className="auth-point">✓ Access based on staff role</span>
+        <span className="auth-point">✓ Clinical activity recorded</span>
       </div>
     </div>
-    <p className="auth-brand-footer" style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Confidential • Reliable • Connected</p>
+    <p className="auth-brand-footer" style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Secure access • Complete history • Accountable activity</p>
   </section>
 );
 
@@ -681,28 +681,28 @@ const Landing=()=>{
   return(
     <div className="auth-shell">
       <AuthBrand
-        kicker="Modern healthcare operations"
-        title={<>Better records.<br/>Better decisions.<br/>Better care.</>}
-        copy="A connected electronic medical record built to help Ghanaian care teams work faster, safer, and with the complete patient story in view."
+        kicker="Hospital electronic medical record"
+        title={<>Patient records and<br/>hospital workflows<br/>in one system.</>}
+        copy="Register patients, document visits, request laboratory tests, prescribe medicines, and review previous care from one secure record."
       />
       <section className="auth-form-side">
         <div className="auth-form-card">
-          <div style={{display:'inline-flex',alignItems:'center',gap:7,color:'#0F766E',fontSize:12,fontWeight:700,marginBottom:14}}><span>●</span> System online</div>
-          <h2>Welcome to your care workspace</h2>
-          <p className="auth-form-copy">Choose the right portal to securely continue.</p>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,color:'#0F766E',fontSize:12,fontWeight:700,marginBottom:14}}><span>●</span> Healthcare EMR</div>
+          <h2>Select your portal</h2>
+          <p className="auth-form-copy">Hospital staff and patients sign in through separate portals.</p>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <button type="button" className="portal-card" onClick={()=>nv('/patient-login')}>
-              <span className="portal-icon">👤</span>
-              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Patient portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block'}}>Appointments, results and prescriptions</span></span>
-              <span className="portal-arrow">→</span>
-            </button>
             <button type="button" className="portal-card" onClick={()=>nv('/login')}>
               <span className="portal-icon" style={{background:'#EFF6FF'}}>🏥</span>
               <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Hospital staff</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block'}}>Clinical and administrative workspace</span></span>
               <span className="portal-arrow">→</span>
             </button>
+            <button type="button" className="portal-card" onClick={()=>nv('/patient-login')}>
+              <span className="portal-icon">👤</span>
+              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Patient portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block'}}>Appointments, results and prescriptions</span></span>
+              <span className="portal-arrow">→</span>
+            </button>
           </div>
-          <p style={{marginTop:28,fontSize:11,color:'#9AA5B5',lineHeight:1.6,textAlign:'center'}}>Authorised access only. Activity within the system may be recorded for patient safety and compliance.</p>
+          <p style={{marginTop:28,fontSize:11,color:'#9AA5B5',lineHeight:1.6,textAlign:'center'}}>Use only the account issued to you. Sign-in activity is recorded for security.</p>
         </div>
       </section>
     </div>
@@ -756,7 +756,7 @@ const Login=()=>{
             <Field label="Your role" required>
               <select value={role} onChange={e=>{setRole(e.target.value);setErr('');}}
                 style={{...inp,color:role?'#0F172A':'#94A3B8'}}>
-                <option value="">— Select Role —</option>
+                <option value="">Select Role</option>
                 <option value="doctor">Doctor</option>
                 <option value="nurse">Nurse</option>
                 <option value="pharmacist">Pharmacist</option>

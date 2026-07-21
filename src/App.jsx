@@ -260,6 +260,7 @@ const GStyles = () => (
     .auth-brand-content{margin:auto 0;}
     .auth-kicker{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid rgba(153,246,228,.24);border-radius:99px;background:rgba(15,118,110,.22);color:#99f6e4;font-size:12px;font-weight:700;margin-bottom:25px;}
     .auth-title{font-size:clamp(36px,4.5vw,62px);line-height:1.08;max-width:620px;margin-bottom:20px;}
+    .auth-brand-landing .auth-title{font-size:clamp(34px,3.5vw,50px);line-height:1.12;max-width:600px;}
     .auth-copy{max-width:520px;color:rgba(255,255,255,.66);font-size:16px;line-height:1.75;}
     .auth-points{display:flex;flex-wrap:wrap;gap:10px;margin-top:30px;}
     .auth-point{padding:8px 11px;border:1px solid rgba(255,255,255,.11);background:rgba(255,255,255,.06);border-radius:10px;color:rgba(255,255,255,.76);font-size:12px;font-weight:600;}
@@ -659,11 +660,11 @@ const BrandIdentity=()=>(
   </div>
 );
 
-const AuthBrand=({kicker='Secure digital care',title,copy})=>(
-  <section className="auth-brand">
+const AuthBrand=({kicker='Secure digital care',title,copy,landing=false})=>(
+  <section className={`auth-brand ${landing?'auth-brand-landing':''}`}>
     <BrandIdentity/>
     <div className="auth-brand-content">
-      <div className="auth-kicker"><span>●</span>{kicker}</div>
+      {kicker&&<div className="auth-kicker"><span>●</span>{kicker}</div>}
       <h1 className="auth-title">{title}</h1>
       <p className="auth-copy">{copy}</p>
       <div className="auth-points">
@@ -681,7 +682,8 @@ const Landing=()=>{
   return(
     <div className="auth-shell">
       <AuthBrand
-        kicker="Hospital electronic medical record"
+        kicker={null}
+        landing
         title={<>Patient records and<br/>hospital workflows<br/>in one system.</>}
         copy="Register patients, document visits, request laboratory tests, prescribe medicines, and review previous care from one secure record."
       />

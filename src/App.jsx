@@ -473,8 +473,8 @@ const Badge=({text,color='gray'})=>{
 const statusBadge=s=>{
   const v=(s||'').toLowerCase();
   const label=String(s||'—').replaceAll('_',' ');
-  if(['active','completed','dispensed','normal','success'].includes(v)) return <Badge text={label} color="green"/>;
-  if(['waiting','pending','scheduled','awaiting_results'].includes(v)) return <Badge text={label} color="yellow"/>;
+  if(['active','completed','confirmed','dispensed','normal','success'].includes(v)) return <Badge text={label} color="green"/>;
+  if(['waiting','pending','requested','scheduled','awaiting_results'].includes(v)) return <Badge text={label} color="yellow"/>;
   if(['cancelled','abnormal','critical','inactive','failure','failed'].includes(v)) return <Badge text={label} color="red"/>;
   if(['registered','triaged','in_consultation'].includes(v)) return <Badge text={label} color="blue"/>;
   return <Badge text={label}/>;
@@ -1499,6 +1499,205 @@ const NurseSchedule=()=>{
         <MF>
           <Btn onClick={()=>setShowConfirm(null)} v="ghost">Cancel</Btn>
           <Btn onClick={()=>dismiss(showConfirm)} v="danger">Remove patient</Btn>
+        </MF>
+      </Modal>
+    </AL>
+  );
+};
+
+const appointmentVisitLabels={
+  general_consultation:'General consultation',
+  follow_up:'Follow-up visit',
+  lab_review:'Laboratory review',
+  specialist_consultation:'Specialist consultation',
+  dental:'Dental visit',
+  antenatal:'Antenatal visit',
+};
+
+const appointmentDateInput=value=>{
+  if(!value)return'';
+  const date=new Date(value);
+  if(Number.isNaN(date.getTime()))return String(value).slice(0,10);
+  date.setMinutes(date.getMinutes()-date.getTimezoneOffset());
+  return date.toISOString().slice(0,10);
+};
+
+const appointmentTimeInput=value=>String(value||'').slice(0,5);
+
+const AppointmentSchedule=()=>{
+  const toast=useToast();
+  const [appointments,setAppointments]=React.useState([]);
+  const [doctors,setDoctors]=React.useState([]);
+  const [loading,setLoading]=React.useState(true);
+  const [search,setSearch]=React.useState('');
+  const [filter,setFilter]=React.useState('requested');
+  const [selected,setSelected]=React.useState(null);
+  const [form,setForm]=React.useState({doctor_id:'',appointment_date:'',appointment_time:'',reschedule_reason:''});
+  const [sub,setSub]=React.useState(false);
+
+  const load=(silent=false)=>{
+    if(!silent)setLoading(true);
+    Promise.all([
+      fetch(`${BASE_URL}/api/appointments`,{headers:ah()}).then(r=>r.json()),
+      fetch(`${BASE_URL}/api/doctors/directory`,{headers:ah()}).then(r=>r.json())
+    ]).then(([a,d])=>{
+      setAppointments(Array.isArray(a)?a:[]);
+      setDoctors(Array.isArray(d)?d:[]);
+    }).catch(()=>toast.show('Unable to load appointment requests.','error'))
+      .finally(()=>{if(!silent)setLoading(false);});
+  };
+  React.useEffect(()=>{load();},[]);
+
+  const openAppointment=a=>{
+    setSelected(a);
+    setForm({
+      doctor_id:String(a.doctor_id||a.preferred_doctor_id||''),
+      appointment_date:appointmentDateInput(a.appointment_date||a.requested_date),
+      appointment_time:appointmentTimeInput(a.appointment_time||a.requested_time)||'09:00',
+      reschedule_reason:''
+    });
+  };
+
+  const selectedSlotConflict=appointments.some(a=>
+    String(a.appointment_id)!==String(selected?.appointment_id)&&
+    ['confirmed','scheduled'].includes(String(a.status||'').toLowerCase())&&
+    String(a.doctor_id)===String(form.doctor_id)&&
+    appointmentDateInput(a.appointment_date)===form.appointment_date&&
+    appointmentTimeInput(a.appointment_time)===form.appointment_time
+  );
+
+  const schedule=async()=>{
+    if(!form.doctor_id||!form.appointment_date||!form.appointment_time){toast.show('Select a doctor, date, and time.','error');return;}
+    if(selectedSlotConflict){toast.show('That doctor already has an appointment at this time.','error');return;}
+    const reviewingRequest=String(selected?.status||'requested').toLowerCase()==='requested';
+    const baselineDoctor=reviewingRequest?selected?.preferred_doctor_id:selected?.doctor_id;
+    const baselineDate=reviewingRequest?(selected?.requested_date||selected?.appointment_date):selected?.appointment_date;
+    const baselineTime=reviewingRequest?(selected?.requested_time||selected?.appointment_time):selected?.appointment_time;
+    const preferenceChanged=
+      (baselineDoctor&&String(baselineDoctor)!==String(form.doctor_id))||
+      appointmentDateInput(baselineDate)!==form.appointment_date||
+      appointmentTimeInput(baselineTime)!==form.appointment_time;
+    if(preferenceChanged&&!form.reschedule_reason.trim()){
+      toast.show('Record why the requested doctor or time was changed.','error');return;
+    }
+    setSub(true);
+    try{
+      const r=await fetch(`${BASE_URL}/api/appointments/${selected.appointment_id}/schedule`,{
+        method:'PATCH',headers:ah(),body:JSON.stringify({
+          doctor_id:Number(form.doctor_id),
+          appointment_date:form.appointment_date,
+          appointment_time:form.appointment_time,
+          reschedule_reason:form.reschedule_reason
+        })
+      });
+      const body=await r.json().catch(()=>({}));
+      if(r.ok){toast.show('Appointment confirmed.');setSelected(null);load();}
+      else toast.show(body.message||'Unable to confirm appointment.','error');
+    }catch{toast.show('Network error.','error');}
+    finally{setSub(false);}
+  };
+
+  const cancel=async()=>{
+    setSub(true);
+    try{
+      const r=await fetch(`${BASE_URL}/api/appointments/${selected.appointment_id}/status`,{
+        method:'PATCH',headers:ah(),body:JSON.stringify({status:'cancelled'})
+      });
+      if(r.ok){toast.show('Appointment cancelled.');setSelected(null);load();}
+      else{const body=await r.json().catch(()=>({}));toast.show(body.message||'Unable to cancel appointment.','error');}
+    }catch{toast.show('Network error.','error');}
+    finally{setSub(false);}
+  };
+
+  const statusOf=a=>String(a.status||'requested').toLowerCase();
+  const requested=appointments.filter(a=>statusOf(a)==='requested');
+  const confirmed=appointments.filter(a=>['confirmed','scheduled'].includes(statusOf(a)));
+  const today=appointmentDateInput(new Date());
+  const todayConfirmed=confirmed.filter(a=>appointmentDateInput(a.appointment_date)===today);
+  const visible=appointments.filter(a=>{
+    const query=search.toLowerCase();
+    const matchesSearch=!query||[a.patient_name,a.national_patient_id,a.doctor_name,a.preferred_doctor_name,a.visit_type]
+      .some(value=>String(value||'').toLowerCase().includes(query));
+    const matchesFilter=filter==='all'||(filter==='confirmed'?['confirmed','scheduled'].includes(statusOf(a)):statusOf(a)===filter);
+    return matchesSearch&&matchesFilter;
+  });
+  const timeOptions=['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
+
+  return(
+    <AL nav={nurseNav} title="Appointment Schedule" searchText={search} setSearchText={setSearch} searchPlaceholder="Patient, ID or doctor...">
+      <Toast {...toast}/>
+      <NursePageIntro kicker="Appointment coordination" title="Review and confirm appointment requests"
+        description="Match patient preferences with an available doctor and record any agreed scheduling changes.">
+        <Btn onClick={()=>load()} v="ghost">↻ Refresh appointments</Btn>
+      </NursePageIntro>
+
+      <div className="nurse-mini-stats">
+        <NurseMiniStat symbol="!" value={loading?'—':requested.length} label="Awaiting confirmation" color="#B45309" bg="#FFFBEB"/>
+        <NurseMiniStat symbol="✓" value={loading?'—':confirmed.length} label="Confirmed appointments" color="#15803D" bg="#F0FDF4"/>
+        <NurseMiniStat symbol="D" value={loading?'—':todayConfirmed.length} label="Confirmed for today" color="#2563EB" bg="#EFF6FF"/>
+        <NurseMiniStat symbol="+" value={loading?'—':doctors.length} label="Active doctors" color="#7C3AED" bg="#F5F3FF"/>
+      </div>
+
+      <section className="clinical-panel">
+        <div className="clinical-panel-header">
+          <div><h3 style={{fontSize:17,color:'#1E293B'}}>Appointment worklist</h3><p style={{fontSize:12.5,color:'#8490A3',marginTop:4}}>Patient-selected dates and doctors are preferences until nursing staff confirms them.</p></div>
+          <div className="filter-pills">
+            {[
+              ['requested','Requests',requested.length],
+              ['confirmed','Confirmed',confirmed.length],
+              ['cancelled','Cancelled',appointments.filter(a=>statusOf(a)==='cancelled').length],
+              ['all','All',appointments.length]
+            ].map(([key,label,count])=><button key={key} className={`filter-pill ${filter===key?'is-active':''}`} onClick={()=>setFilter(key)}>{label} · {count}</button>)}
+          </div>
+        </div>
+        <div style={{padding:18}}>
+          {loading?<p style={{textAlign:'center',padding:45,color:'#94A3B8'}}>Loading appointment requests...</p>:
+            <Table cols={[
+              {key:'patient',label:'Patient',w:'22%'},
+              {key:'visit',label:'Visit',w:'21%'},
+              {key:'preference',label:'Patient preference',w:'24%'},
+              {key:'status',label:'Status',w:'13%'},
+              {key:'action',label:'Action',w:'20%'},
+            ]} rows={visible.map(a=>({
+              patient:<div className="patient-name-cell"><span className="patient-avatar">{(a.patient_name||'P').charAt(0).toUpperCase()}</span><div><strong>{a.patient_name||'Unnamed patient'}</strong><small>{a.national_patient_id||`Patient #${a.patient_id}`}</small></div></div>,
+              visit:<div><strong style={{display:'block',fontSize:12.5,color:'#344056'}}>{appointmentVisitLabels[a.visit_type]||'General consultation'}</strong><small style={{display:'block',marginTop:3,color:'#8490A3'}}>{a.symptoms_reason||'No reason provided'}</small></div>,
+              preference:<div><strong style={{display:'block',fontSize:12.5,color:'#475569'}}>{fmtDate(a.requested_date||a.appointment_date)} · {appointmentTimeInput(a.requested_time||a.appointment_time)||'Time not selected'}</strong><small style={{display:'block',marginTop:3,color:'#8490A3'}}>{a.preferred_doctor_name||'Any available doctor'}</small></div>,
+              status:statusBadge(a.status||'requested'),
+              action:['cancelled','completed','no_show'].includes(statusOf(a))?<span style={{fontSize:11.5,color:'#94A3B8'}}>Closed</span>:<Btn onClick={()=>openAppointment(a)} v={statusOf(a)==='requested'?'blue':'ghost'} sz="sm">{statusOf(a)==='requested'?'Review request':'Reschedule'}</Btn>
+            }))} empty={search?'No appointments match your search.':'No appointments in this view.'}/>
+          }
+        </div>
+      </section>
+
+      <Modal open={!!selected} onClose={()=>!sub&&setSelected(null)} title={statusOf(selected||{})==='requested'?'Review Appointment Request':'Reschedule Appointment'} width={560}>
+        <MB>
+          <div className="vitals-patient-card">
+            <span className="patient-avatar">{(selected?.patient_name||'P').charAt(0).toUpperCase()}</span>
+            <div style={{flex:1}}><strong style={{display:'block',color:'#1E293B'}}>{selected?.patient_name}</strong><small style={{color:'#64748B'}}>{selected?.national_patient_id} · {appointmentVisitLabels[selected?.visit_type]||'General consultation'}</small></div>
+            {selected&&statusBadge(selected.status||'requested')}
+          </div>
+          <div style={{padding:'11px 13px',background:'#F8FAFC',border:'1px solid #E5EAF1',borderRadius:11,fontSize:12,color:'#64748B',lineHeight:1.6}}><strong style={{color:'#344056'}}>Patient preference:</strong> {selected?.preferred_doctor_name||'Any available doctor'} on {fmtDate(selected?.requested_date||selected?.appointment_date)} at {appointmentTimeInput(selected?.requested_time||selected?.appointment_time)||'an unspecified time'}.</div>
+          <Field label="Assigned doctor" required>
+            <select value={form.doctor_id} onChange={e=>setForm({...form,doctor_id:e.target.value})} style={inp}>
+              <option value="">Select an available doctor</option>
+              {doctors.map(d=><option key={d.doctor_id} value={d.doctor_id}>{d.full_name}{d.specialization?` — ${d.specialization}`:''}</option>)}
+            </select>
+          </Field>
+          <div className="form-grid-2">
+            <Field label="Confirmed date" required><input type="date" min={today} value={form.appointment_date} onChange={e=>setForm({...form,appointment_date:e.target.value})} style={inp}/></Field>
+            <Field label="Confirmed time" required><select value={form.appointment_time} onChange={e=>setForm({...form,appointment_time:e.target.value})} style={inp}>{timeOptions.map(time=><option key={time}>{time}</option>)}</select></Field>
+          </div>
+          {selectedSlotConflict&&<div style={{padding:'10px 13px',background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,fontSize:11.5,color:'#991B1B'}}>This doctor already has a confirmed appointment at that time.</div>}
+          <Field label="Reason for a scheduling change">
+            <textarea value={form.reschedule_reason} onChange={e=>setForm({...form,reschedule_reason:e.target.value})} placeholder="Required when changing the patient's preferred doctor, date, or time..." style={{...inp,height:82,resize:'vertical'}}/>
+          </Field>
+          <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>Confirm the final arrangement with the patient. The selected doctor, date, time, and any changes will be visible in the patient portal and audit trail.</p>
+        </MB>
+        <MF>
+          <Btn onClick={cancel} disabled={sub} v="danger">Cancel appointment</Btn>
+          <div style={{flex:1}}/>
+          <Btn onClick={()=>setSelected(null)} disabled={sub} v="ghost">Close</Btn>
+          <Btn onClick={schedule} disabled={sub||selectedSlotConflict} v="green">{sub?'Saving...':'Confirm appointment'}</Btn>
         </MF>
       </Modal>
     </AL>
@@ -3458,31 +3657,40 @@ const PatientDashboard=()=>{
   const toast=useToast();
   const user=JSON.parse(localStorage.getItem('user')||'{}');
   const [data,setData]=React.useState(null);
+  const [doctors,setDoctors]=React.useState([]);
   const [loading,setLoading]=React.useState(true);
   const [showBook,setShowBook]=React.useState(false);
   const [showSuccess,setShowSuccess]=React.useState(false);
-  const [booking,setBooking]=React.useState({specialty:'General Consultation',appointment_date:'',symptoms_reason:''});
+  const [booking,setBooking]=React.useState({visit_type:'general_consultation',preferred_doctor_id:'',appointment_date:'',appointment_time:'09:00',symptoms_reason:''});
   const [sub,setSub]=React.useState(false);
 
   const load=()=>{
     setLoading(true);
-    fetch(`${BASE_URL}/api/patients/me`,{headers:ah()})
-      .then(r=>r.json()).then(d=>setData(d)).catch(()=>{}).finally(()=>setLoading(false));
+    Promise.all([
+      fetch(`${BASE_URL}/api/patients/me`,{headers:ah()}).then(r=>r.json()),
+      fetch(`${BASE_URL}/api/doctors/directory`,{headers:ah()}).then(r=>r.json())
+    ]).then(([patientData,doctorData])=>{
+      setData(patientData);
+      setDoctors(Array.isArray(doctorData)?doctorData:[]);
+    }).catch(()=>{}).finally(()=>setLoading(false));
   };
   React.useEffect(load,[]);
 
   const book=async()=>{
-    if(!booking.appointment_date){toast.show('Please select a date.','error');return;}
+    if(!booking.appointment_date||!booking.appointment_time){toast.show('Please select a preferred date and time.','error');return;}
     setSub(true);
     try{
       const r=await fetch(`${BASE_URL}/api/appointments`,{method:'POST',headers:ah(),
         body:JSON.stringify({patient_id:data?.profile?.patient_id,
           appointment_date:booking.appointment_date,
-          symptoms_reason:booking.symptoms_reason||booking.specialty,status:'scheduled'})});
+          appointment_time:booking.appointment_time,
+          preferred_doctor_id:booking.preferred_doctor_id?Number(booking.preferred_doctor_id):null,
+          visit_type:booking.visit_type,
+          symptoms_reason:booking.symptoms_reason})});
       if(r.ok){
         setShowBook(false);
         setShowSuccess(true);
-        setBooking({specialty:'General Consultation',appointment_date:'',symptoms_reason:''});
+        setBooking({visit_type:'general_consultation',preferred_doctor_id:'',appointment_date:'',appointment_time:'09:00',symptoms_reason:''});
         load();
       }else{
         const error=await r.json().catch(()=>({}));
@@ -3499,7 +3707,7 @@ const PatientDashboard=()=>{
   const labs=data?.lab_results||[];
   const records=data?.medical_records||[];
   const patientName=profile.full_name||user.full_name||'Patient';
-  const upcoming=appts.filter(a=>['scheduled','pending'].includes(String(a.status||'scheduled').toLowerCase()))
+  const upcoming=appts.filter(a=>['requested','confirmed','scheduled','pending'].includes(String(a.status||'requested').toLowerCase()))
     .sort((a,b)=>new Date(a.appointment_date||0)-new Date(b.appointment_date||0));
   const pendingMedication=presc.filter(p=>String(p.status||'pending').toLowerCase()!=='dispensed');
   const firstName=patientName.split(' ')[0];
@@ -3510,6 +3718,18 @@ const PatientDashboard=()=>{
     date.setMinutes(date.getMinutes()-date.getTimezoneOffset());
     return date.toISOString().slice(0,10);
   })();
+  const previousDoctorId=(
+    appts.find(a=>a.doctor_id)?.doctor_id||
+    records.find(r=>r.doctor_id)?.doctor_id||''
+  );
+  const changeVisitType=visitType=>setBooking(current=>({
+    ...current,
+    visit_type:visitType,
+    preferred_doctor_id:visitType==='follow_up'&&!current.preferred_doctor_id&&previousDoctorId
+      ?String(previousDoctorId)
+      :current.preferred_doctor_id
+  }));
+  const appointmentTimes=['08:00','08:30','09:00','09:30','10:00','10:30','11:00','11:30','12:00','13:00','13:30','14:00','14:30','15:00','15:30','16:00'];
 
   return(
     <AL nav={patientNav} title="My Health">
@@ -3544,8 +3764,8 @@ const PatientDashboard=()=>{
             {upcoming.length===0?<NurseEmptyState symbol="D" title="No upcoming appointments" description="When you need care, you can request an appointment directly from this portal."><Btn onClick={()=>setShowBook(true)} v="blue" sz="sm">Book an appointment</Btn></NurseEmptyState>:
               upcoming.slice(0,5).map((appointment,index)=>(
                 <div className="queue-preview-row" key={appointment.appointment_id||index} style={{gridTemplateColumns:'minmax(150px,.65fr) minmax(0,1.35fr) auto'}}>
-                  <div><strong style={{fontSize:13,color:'#1E293B'}}>{fmtDate(appointment.appointment_date)}</strong><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>Appointment date</p></div>
-                  <div><p style={{fontSize:12.5,fontWeight:700,color:'#475569'}}>{appointment.symptoms_reason||appointment.reason||'General consultation'}</p><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>Reason for visit</p></div>
+                  <div><strong style={{fontSize:13,color:'#1E293B'}}>{fmtDate(appointment.appointment_date)}{appointment.appointment_time?` · ${appointmentTimeInput(appointment.appointment_time)}`:''}</strong><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>{String(appointment.status).toLowerCase()==='requested'?'Preferred date':'Confirmed appointment'}</p></div>
+                  <div><p style={{fontSize:12.5,fontWeight:700,color:'#475569'}}>{appointmentVisitLabels[appointment.visit_type]||'General consultation'}</p><p style={{fontSize:10.5,color:'#94A3B8',marginTop:3}}>{appointment.doctor_name||appointment.preferred_doctor_name||'Any available doctor'}</p></div>
                   {statusBadge(appointment.status||'scheduled')}
                 </div>
               ))
@@ -3604,32 +3824,41 @@ const PatientDashboard=()=>{
             <div><strong style={{display:'block',color:'#1E293B'}}>{patientName}</strong><small style={{color:'#64748B'}}>Patient ID: {profile.national_patient_id||profile.patient_id||'—'}</small></div>
           </div>
           <Field label="Type of visit" required>
-            <select value={booking.specialty} onChange={e=>setBooking({...booking,specialty:e.target.value})} style={inp}>
-              <option>General Consultation</option>
-              <option>Follow-up Visit</option>
-              <option>Lab Review</option>
-              <option>Specialist Referral</option>
-              <option>Dental</option>
-              <option>Antenatal</option>
+            <select value={booking.visit_type} onChange={e=>changeVisitType(e.target.value)} style={inp}>
+              <option value="general_consultation">General consultation</option>
+              <option value="follow_up">Follow-up visit</option>
+              <option value="lab_review">Laboratory review</option>
+              <option value="specialist_consultation">Specialist consultation</option>
+              <option value="dental">Dental visit</option>
+              <option value="antenatal">Antenatal visit</option>
             </select>
           </Field>
-          <Field label="Preferred date" required>
-            <input type="date" min={todayInput} value={booking.appointment_date} onChange={e=>setBooking({...booking,appointment_date:e.target.value})} style={inp}/>
+          {booking.visit_type==='follow_up'&&<div style={{padding:'10px 13px',background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:10,fontSize:11.5,color:'#1E40AF',lineHeight:1.5}}>{previousDoctorId?'Your previous doctor has been suggested below. You may still choose any available doctor.':'No previous doctor could be identified, so the scheduling nurse will assign an available doctor.'}</div>}
+          {booking.visit_type==='specialist_consultation'&&<div style={{padding:'10px 13px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:10,fontSize:11.5,color:'#92400E',lineHeight:1.5}}><strong>Specialist consultation:</strong> choose this when a clinician has advised you to see a doctor with specialist expertise. The scheduling nurse may verify the referral before confirming.</div>}
+          <Field label="Preferred doctor">
+            <select value={booking.preferred_doctor_id} onChange={e=>setBooking({...booking,preferred_doctor_id:e.target.value})} style={inp}>
+              <option value="">Any available doctor</option>
+              {doctors.map(d=><option key={d.doctor_id} value={d.doctor_id}>{d.full_name}{d.specialization?` — ${d.specialization}`:''}{String(d.doctor_id)===String(previousDoctorId)?' (previous doctor)':''}</option>)}
+            </select>
           </Field>
+          <div className="form-grid-2">
+            <Field label="Preferred date" required><input type="date" min={todayInput} value={booking.appointment_date} onChange={e=>setBooking({...booking,appointment_date:e.target.value})} style={inp}/></Field>
+            <Field label="Preferred time" required><select value={booking.appointment_time} onChange={e=>setBooking({...booking,appointment_time:e.target.value})} style={inp}>{appointmentTimes.map(time=><option key={time}>{time}</option>)}</select></Field>
+          </div>
           <Field label="Symptoms or reason for visit">
             <textarea value={booking.symptoms_reason} onChange={e=>setBooking({...booking,symptoms_reason:e.target.value})}
               placeholder="Briefly describe what you would like help with..." style={{...inp,height:100,resize:'vertical'}}/>
           </Field>
-          <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>If your symptoms are severe or life-threatening, seek emergency care instead of waiting for an online appointment.</p>
+          <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>This is a preferred doctor and time, not yet a confirmed booking. Nursing staff will confirm it or contact you with another available slot. For severe or life-threatening symptoms, seek emergency care instead.</p>
         </MB>
         <MF>
           <Btn onClick={()=>setShowBook(false)} v="ghost">Cancel</Btn>
-          <Btn onClick={book} disabled={sub} v="blue">{sub?'Booking...':'Confirm appointment'}</Btn>
+          <Btn onClick={book} disabled={sub} v="blue">{sub?'Submitting...':'Submit appointment request'}</Btn>
         </MF>
       </Modal>
-      <Modal open={showSuccess} onClose={()=>setShowSuccess(false)} title="Appointment Booked" width={420}>
+      <Modal open={showSuccess} onClose={()=>setShowSuccess(false)} title="Request Submitted" width={420}>
         <MB>
-          <NurseEmptyState symbol="✓" title="Your appointment is scheduled" description="It has been added to your health portal. Please arrive on time and tell the nurse that you booked online."/>
+          <NurseEmptyState symbol="✓" title="Your request is awaiting confirmation" description="The scheduling nurse will check the doctor and time. The confirmed appointment or any agreed change will appear in your health portal."/>
         </MB>
         <MF><Btn onClick={()=>setShowSuccess(false)} v="blue" style={{justifyContent:'center',width:'100%'}}>Return to my health</Btn></MF>
       </Modal>
@@ -3776,7 +4005,7 @@ export default function App(){
         <Route path="/nurse-dashboard"       element={<NurseDashboard/>}/>
         <Route path="/nurse-patients"        element={<NursePatients/>}/>
         <Route path="/nurse-triage"          element={<NurseTriage/>}/>
-        <Route path="/nurse-schedule"        element={<NurseSchedule/>}/>
+        <Route path="/nurse-schedule"        element={<AppointmentSchedule/>}/>
         <Route path="/nurse-patient-profile" element={<NursePatientProfile/>}/>
         {/* Doctor */}
         <Route path="/doctor-dashboard"      element={<DoctorDashboard/>}/>

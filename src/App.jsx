@@ -1,14 +1,27 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom';
 
-const BASE_URL = 'https://emr-backend-production-5ebf.up.railway.app';
+const PRODUCTION_API_URL = 'https://emr-backend-production-5ebf.up.railway.app';
+const isLocalFrontend = ['localhost','127.0.0.1'].includes(window.location.hostname);
+const BASE_URL = import.meta.env.VITE_API_URL
+  || (isLocalFrontend?'http://localhost:5000':PRODUCTION_API_URL);
+
+const ROLE_HOME={
+  admin:'/admin-dashboard',doctor:'/doctor-dashboard',nurse:'/nurse-dashboard',
+  lab_technician:'/lab-dashboard',pharmacist:'/pharm-dashboard',patient:'/patient-dashboard'
+};
+
+const clearStoredAuth=()=>{
+  ['token','user','role','display_name'].forEach(key=>localStorage.removeItem(key));
+  ['password_change_token','password_change_user'].forEach(key=>sessionStorage.removeItem(key));
+};
 
 const clearSessionAndRedirect=(message='Your session expired. Please sign in again.')=>{
   if(window.__emrSessionRedirecting)return;
   window.__emrSessionRedirecting=true;
   const role=localStorage.getItem('role');
   sessionStorage.setItem('emr_session_notice',message);
-  ['token','user','role','display_name'].forEach(key=>localStorage.removeItem(key));
+  clearStoredAuth();
   window.location.replace(role==='patient'?'/patient-login':'/login');
 };
 
@@ -41,6 +54,7 @@ if(typeof window!=='undefined'&&!window.__emrFetchInterceptorInstalled){
     'This account is inactive. Contact an administrator.',
     'This account is no longer available.'
   ]);
+  const revokedSessionCodes=new Set(['SESSION_INVALID','PASSWORD_CHANGE_REQUIRED']);
 
   window.fetch=async(...args)=>{
     const request=args[0];
@@ -52,9 +66,11 @@ if(typeof window!=='undefined'&&!window.__emrFetchInterceptorInstalled){
 
     if(response.status===403&&requestHeaders.has('Authorization')){
       const payload=await response.clone().json().catch(()=>null);
-      if(revokedSessionMessages.has(payload?.message)){
+      if(revokedSessionMessages.has(payload?.message)||revokedSessionCodes.has(payload?.code)){
         clearSessionAndRedirect(
-          payload.message==='This account is inactive. Contact an administrator.'
+          payload?.code==='PASSWORD_CHANGE_REQUIRED'
+            ?'You must change your password before accessing the system. Please sign in again.'
+            :payload.message==='This account is inactive. Contact an administrator.'
             ?'Your account has been deactivated. Contact an administrator.'
             :'Your session is no longer valid. Please sign in again.'
         );
@@ -72,6 +88,29 @@ const useSessionNotice=()=>{
     return value;
   });
   return notice;
+};
+
+const SessionRedirect=({role})=>{
+  const nv=useNavigate();
+  React.useEffect(()=>{
+    const hadToken=Boolean(localStorage.getItem('token'));
+    clearStoredAuth();
+    if(hadToken)sessionStorage.setItem('emr_session_notice','Your session is no longer valid. Please sign in again.');
+    nv(role==='patient'?'/patient-login':'/login',{replace:true});
+  },[nv,role]);
+  return null;
+};
+
+const RequireSession=({roles,children})=>{
+  const token=localStorage.getItem('token');
+  const role=localStorage.getItem('role');
+  const validToken=Boolean(token&&token!=='undefined'&&!tokenHasExpired(token));
+
+  if(!validToken)return <SessionRedirect role={role}/>;
+  if(Array.isArray(roles)&&!roles.includes(role)){
+    return <Navigate to={ROLE_HOME[role]||'/'} replace/>;
+  }
+  return children;
 };
 const calcAge = dob => dob ? Math.floor((Date.now() - new Date(dob)) / (365.25*24*60*60*1000)) : '—';
 const fmtDate = d => {
@@ -270,8 +309,11 @@ const GStyles = () => (
     .auth-form-copy{font-size:14px;color:#748197;line-height:1.6;margin-bottom:28px;}
     .portal-card{width:100%;border:1px solid #dce5ee;background:white;padding:18px 19px;border-radius:16px;cursor:pointer;display:flex;align-items:center;gap:14px;text-align:left;box-shadow:var(--shadow-sm);}
     .portal-card:hover{transform:translateY(-2px);border-color:#99f6e4;box-shadow:0 14px 32px rgba(15,118,110,.1);}
-    .portal-icon{width:45px;height:45px;border-radius:13px;display:grid;place-items:center;background:#ecfdf5;font-size:21px;}
+    .portal-icon{width:45px;height:45px;border-radius:13px;display:grid;place-items:center;background:#ecfdf5;color:#0f766e;flex-shrink:0;}
+    .portal-icon-staff{background:#eff6ff;color:#2563eb;}
+    .portal-icon svg{width:23px;height:23px;}
     .portal-arrow{margin-left:auto;font-size:20px;color:#0f766e;}
+    .auth-brand-landing .auth-brand-footer{color:rgba(255,255,255,.55) !important;}
     .nurse-hero{
       position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:24px;
       padding:28px 30px;border-radius:20px;color:white;margin-bottom:20px;
@@ -371,6 +413,11 @@ const GStyles = () => (
       .auth-shell{grid-template-columns:1fr;}
       .auth-brand{min-height:330px;padding:32px 26px;}
       .auth-brand-content{margin:44px 0 20px;}
+      .auth-brand-landing{min-height:300px;padding:28px 26px 24px;}
+      .auth-brand-landing .auth-brand-content{margin:30px 0 16px;}
+      .auth-brand-landing .auth-title{font-size:34px;margin-bottom:14px;}
+      .auth-brand-landing .auth-copy{font-size:14px;line-height:1.6;}
+      .auth-brand-landing .auth-points{margin-top:20px;}
       .auth-title{font-size:40px;}
       .auth-form-side{padding:42px 24px 54px;}
       .nurse-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
@@ -388,6 +435,9 @@ const GStyles = () => (
       .auth-brand{min-height:300px;}
       .auth-title{font-size:34px;}
       .auth-points{display:none;}
+      .auth-brand-landing{min-height:0;padding:24px 26px 20px;}
+      .auth-brand-landing .auth-brand-content{margin:26px 0 12px;}
+      .auth-brand-landing .auth-title{font-size:30px;line-height:1.12;}
       .auth-form-side{align-items:flex-start;padding-top:36px;}
       .auth-form-card h2{font-size:26px;}
       .nurse-hero{align-items:flex-start;flex-direction:column;padding:23px 20px;}
@@ -553,7 +603,7 @@ const SC=({label,value,icon,color='#1E293B',bg='white',border='#E2E8F0'})=>(
 const Sidebar=({nav,open,onClose})=>{
   const loc=useLocation();
   const nv=useNavigate();
-  const logout=()=>{['token','user','role','display_name'].forEach(k=>localStorage.removeItem(k));nv('/',{replace:true});};
+  const logout=()=>{clearStoredAuth();nv('/',{replace:true});};
   const dn=localStorage.getItem('display_name')||'';
   const role=(localStorage.getItem('role')||'Staff').replace('_',' ');
   return(
@@ -650,27 +700,40 @@ const AL=({nav,title,searchText,setSearchText,searchPlaceholder='Search records.
 /* ══════════════════════════════════════
    LANDING
 ══════════════════════════════════════ */
-const BrandIdentity=()=>(
+const BrandIdentity=({subtitle=''})=>(
   <div style={{display:'flex',alignItems:'center',gap:11,position:'relative',zIndex:1}}>
     <div className="brand-mark">+</div>
     <div>
       <div style={{fontFamily:'Manrope',fontWeight:800,fontSize:14,letterSpacing:.25}}>HEALTHCARE EMR</div>
-      <div style={{fontSize:10,color:'rgba(255,255,255,.5)',marginTop:3}}></div>
+      {subtitle&&<div style={{fontSize:10,color:'rgba(255,255,255,.58)',marginTop:3}}>{subtitle}</div>}
     </div>
   </div>
 );
 
-const AuthBrand=({kicker='Secure digital care',title,copy,landing=false})=>(
+const PortalIcon=({type})=>type==='staff'?(
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M6 21V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/>
+    <path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-2"/>
+    <path d="M9 7h6M12 4v6M10 21v-4h4v4"/>
+  </svg>
+):(
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="4"/>
+    <path d="M4 21a8 8 0 0 1 16 0"/>
+  </svg>
+);
+
+const AuthBrand=({kicker='Secure digital care',title,copy,landing=false,brandSubtitle=''})=>(
   <section className={`auth-brand ${landing?'auth-brand-landing':''}`}>
-    <BrandIdentity/>
+    <BrandIdentity subtitle={brandSubtitle}/>
     <div className="auth-brand-content">
       {kicker&&<div className="auth-kicker"><span>●</span>{kicker}</div>}
       <h1 className="auth-title">{title}</h1>
       <p className="auth-copy">{copy}</p>
       <div className="auth-points">
         <span className="auth-point">✓ Complete patient history</span>
-        <span className="auth-point">✓ Access based on staff role</span>
-        <span className="auth-point">✓ Clinical activity recorded</span>
+        <span className="auth-point">✓ Role-based access</span>
+        <span className="auth-point">✓ Recorded clinical activity</span>
       </div>
     </div>
     <p className="auth-brand-footer" style={{fontSize:11,color:'rgba(255,255,255,.35)'}}>Secure access • Complete history • Accountable activity</p>
@@ -684,27 +747,28 @@ const Landing=()=>{
       <AuthBrand
         kicker={null}
         landing
-        title={<>Patient records and<br/>hospital workflows<br/>in one system.</>}
-        copy="Register patients, document visits, request laboratory tests, prescribe medicines, and review previous care from one secure record."
+        brandSubtitle="Electronic Medical Record System"
+        title={<>Electronic medical records for coordinated patient care.</>}
+        copy="Manage patient registration, triage, consultations, laboratory requests, prescriptions, pharmacy dispensing and appointments from one secure system."
       />
       <section className="auth-form-side">
         <div className="auth-form-card">
-          <div style={{display:'inline-flex',alignItems:'center',gap:7,color:'#0F766E',fontSize:12,fontWeight:700,marginBottom:14}}><span>●</span> Healthcare EMR</div>
-          <h2>Select your portal</h2>
-          <p className="auth-form-copy">Hospital staff and patients sign in through separate portals.</p>
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,color:'#0F766E',fontSize:11,fontWeight:800,letterSpacing:'.08em',marginBottom:14}}><span>●</span> SECURE PORTAL ACCESS</div>
+          <h2>Choose your portal</h2>
+          <p className="auth-form-copy">Select the portal assigned to your account.</p>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
             <button type="button" className="portal-card" onClick={()=>nv('/login')}>
-              <span className="portal-icon" style={{background:'#EFF6FF'}}>🏥</span>
-              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Hospital staff</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block'}}>Clinical and administrative workspace</span></span>
+              <span className="portal-icon portal-icon-staff"><PortalIcon type="staff"/></span>
+              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Staff portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Doctors, nurses, laboratory, pharmacy and administration</span></span>
               <span className="portal-arrow">→</span>
             </button>
             <button type="button" className="portal-card" onClick={()=>nv('/patient-login')}>
-              <span className="portal-icon">👤</span>
-              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Patient portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block'}}>Appointments, results and prescriptions</span></span>
+              <span className="portal-icon"><PortalIcon type="patient"/></span>
+              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Patient portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Appointments, prescriptions, laboratory results and visit history</span></span>
               <span className="portal-arrow">→</span>
             </button>
           </div>
-          <p style={{marginTop:28,fontSize:11,color:'#9AA5B5',lineHeight:1.6,textAlign:'center'}}>Use only the account issued to you. Sign-in activity is recorded for security.</p>
+          <p style={{marginTop:28,fontSize:11,color:'#9AA5B5',lineHeight:1.6,textAlign:'center'}}>Authorized users only. Sign-in activity is recorded.</p>
         </div>
       </section>
     </div>
@@ -734,6 +798,14 @@ const Login=()=>{
         body:JSON.stringify({email,password:pass,role})});
       const d=await r.json();
       if(!r.ok){setErr(d.message||'Invalid credentials.');return;}
+      if(d.password_change_required){
+        ['token','user','role','display_name'].forEach(key=>localStorage.removeItem(key));
+        sessionStorage.setItem('password_change_token',d.password_change_token);
+        sessionStorage.setItem('password_change_user',JSON.stringify(d.user));
+        nv('/change-password',{replace:true});
+        return;
+      }
+      if(!d.token){setErr('The server did not issue a valid access token.');return;}
       localStorage.setItem('token',d.token);
       localStorage.setItem('user',JSON.stringify(d.user));
       localStorage.setItem('role',d.user.role);
@@ -814,6 +886,14 @@ const PatientLogin=()=>{
         body:JSON.stringify({email,password:pass,role:'patient'})});
       const d=await r.json();
       if(!r.ok){setErr(d.message||'Invalid credentials.');return;}
+      if(d.password_change_required){
+        ['token','user','role','display_name'].forEach(key=>localStorage.removeItem(key));
+        sessionStorage.setItem('password_change_token',d.password_change_token);
+        sessionStorage.setItem('password_change_user',JSON.stringify(d.user));
+        nv('/change-password',{replace:true});
+        return;
+      }
+      if(!d.token){setErr('The server did not issue a valid access token.');return;}
       localStorage.setItem('token',d.token);
       localStorage.setItem('user',JSON.stringify(d.user));
       localStorage.setItem('role',d.user.role);
@@ -863,8 +943,100 @@ const PatientLogin=()=>{
   );
 };
 
+const PasswordChange=()=>{
+  const nv=useNavigate();
+  const [user]=React.useState(()=>{
+    try{return JSON.parse(sessionStorage.getItem('password_change_user')||'{}');}
+    catch{return {};}
+  });
+  const [password,setPassword]=React.useState('');
+  const [confirmPassword,setConfirmPassword]=React.useState('');
+  const [showPassword,setShowPassword]=React.useState(false);
+  const [loading,setLoading]=React.useState(false);
+  const [err,setErr]=React.useState('');
+  const changeToken=sessionStorage.getItem('password_change_token');
+  const loginPath=user.role==='patient'?'/patient-login':'/login';
+  const routes={admin:'/admin-dashboard',doctor:'/doctor-dashboard',nurse:'/nurse-dashboard',
+    lab_technician:'/lab-dashboard',pharmacist:'/pharm-dashboard',patient:'/patient-dashboard'};
+
+  React.useEffect(()=>{
+    if(!changeToken||!user.user_id)nv(loginPath,{replace:true});
+  },[changeToken,user.user_id,loginPath,nv]);
+
+  const cancel=()=>{
+    sessionStorage.removeItem('password_change_token');
+    sessionStorage.removeItem('password_change_user');
+    nv(loginPath,{replace:true});
+  };
+
+  const changePassword=async()=>{
+    if(password.length<12){setErr('Password must be at least 12 characters.');return;}
+    if(password!==confirmPassword){setErr('The passwords do not match.');return;}
+    setLoading(true);setErr('');
+    try{
+      const r=await fetch(`${BASE_URL}/api/auth/change-password`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${changeToken}`},
+        body:JSON.stringify({new_password:password})
+      });
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){setErr(d.message||'Unable to change password.');return;}
+      if(!d.token){setErr('The server did not issue a valid access token.');return;}
+
+      sessionStorage.removeItem('password_change_token');
+      sessionStorage.removeItem('password_change_user');
+      localStorage.setItem('token',d.token);
+      localStorage.setItem('user',JSON.stringify(d.user));
+      localStorage.setItem('role',d.user.role);
+      localStorage.setItem('display_name',d.user.full_name||'');
+      nv(routes[d.user.role]||'/',{replace:true});
+    }catch{
+      setErr('Network error. Please try again.');
+    }finally{
+      setLoading(false);
+    }
+  };
+
+  if(!changeToken||!user.user_id)return null;
+
+  return(
+    <div className="auth-shell">
+      <AuthBrand kicker="Account security" title={<>Create your private password.</>} copy="Your current credential was issued only to verify your identity. Set a private password before accessing any patient or hospital information."/>
+      <section className="auth-form-side">
+        <div className="auth-form-card">
+          <div style={{display:'inline-flex',alignItems:'center',gap:7,color:'#0F766E',fontSize:11,fontWeight:800,letterSpacing:'.08em',marginBottom:14}}>
+            <span>●</span> REQUIRED SECURITY STEP
+          </div>
+          <h2>Change your password</h2>
+          <p className="auth-form-copy">Welcome, {user.full_name||'user'}. You must complete this step before continuing.</p>
+          {err&&<div style={{padding:'11px 14px',backgroundColor:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,color:'#DC2626',fontSize:13,fontWeight:600,marginBottom:16}} role="alert">{err}</div>}
+          <div style={{padding:'12px 14px',background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:12,fontSize:11.5,color:'#64748B',lineHeight:1.65,marginBottom:18}}>
+            Use at least 12 characters with uppercase, lowercase, a number, and a special character. Do not reuse your current password.
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:16}}>
+            <Field label="New password" required>
+              <input type={showPassword?'text':'password'} value={password} onChange={e=>{setPassword(e.target.value);setErr('');}} autoComplete="new-password" placeholder="Enter a strong password" style={inp}/>
+            </Field>
+            <Field label="Confirm new password" required>
+              <input type={showPassword?'text':'password'} value={confirmPassword} onChange={e=>{setConfirmPassword(e.target.value);setErr('');}} onKeyDown={e=>e.key==='Enter'&&changePassword()} autoComplete="new-password" placeholder="Enter it again" style={inp}/>
+            </Field>
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:12,color:'#64748B',cursor:'pointer'}}>
+              <input type="checkbox" checked={showPassword} onChange={e=>setShowPassword(e.target.checked)}/> Show passwords
+            </label>
+            <Btn onClick={changePassword} disabled={loading} v="primary" sz="lg" style={{width:'100%',justifyContent:'center'}}>
+              {loading?'Changing password...':'Change password and continue'}
+            </Btn>
+            <button type="button" onClick={cancel} style={{border:0,background:'none',color:'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>Cancel and return to sign in</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+};
+
 const LogoutPage=()=>{
   const nv=useNavigate();
+  React.useEffect(()=>clearStoredAuth(),[]);
   return(
     <div style={{minHeight:'100vh',display:'flex',justifyContent:'center',alignItems:'center',background:'radial-gradient(circle at top,#E6FFFA,#F4F7FB 45%)',padding:24}}>
       <div style={{textAlign:'center',maxWidth:400,background:'white',padding:'42px 38px',borderRadius:20,border:'1px solid #E5EAF1',boxShadow:'var(--shadow-lg)'}}>
@@ -895,7 +1067,7 @@ const NurseDashboard=()=>{
   const [loading,setLoading]=React.useState(true);
   const [now,setNow]=React.useState(new Date());
   const [showReg,setShowReg]=React.useState(false);
-  const emptyRegistration={fn:'',ln:'',email:'',password:'patient123',dob:'',phone:'',gender:'',regDate:''};
+  const emptyRegistration={fn:'',ln:'',email:'',dob:'',phone:'',gender:'',regDate:''};
   const [f,setF]=React.useState(emptyRegistration);
   const [registeredPatient,setRegisteredPatient]=React.useState(null);
   const [sub,setSub]=React.useState(false);
@@ -926,14 +1098,14 @@ const NurseDashboard=()=>{
     setSub(true);
     try{
       const r=await fetch(`${BASE_URL}/api/patients`,{method:'POST',headers:ah(),
-        body:JSON.stringify({full_name:`${f.fn} ${f.ln}`,email:f.email||undefined,password:f.password||undefined,
+        body:JSON.stringify({full_name:`${f.fn} ${f.ln}`,email:f.email||undefined,
           date_of_birth:f.dob,phone:f.phone,gender:f.gender,
           registration_date:f.regDate||new Date().toLocaleDateString('en-GB')})});
       const d=await r.json();
       if(r.ok){
         toast.show('Patient registered and added to the nurse queue.');
         setShowReg(false);
-        setRegisteredPatient({...d.patient,temporary_password:f.password||'patient123'});
+        setRegisteredPatient({...d.patient,temporary_password:d.temporary_password});
         setF(emptyRegistration);
         loadStats();
       }
@@ -1088,7 +1260,9 @@ const NurseDashboard=()=>{
             <Field label="Last Name"  required><input value={f.ln} onChange={e=>setF({...f,ln:e.target.value})} placeholder="e.g. Mensah" style={inp}/></Field>
           </div>
           <Field label="Email (required for patient portal)"><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="e.g. kwame@email.com" style={inp}/></Field>
-          <Field label="Temporary Portal Password"><input type="text" value={f.password} onChange={e=>setF({...f,password:e.target.value})} placeholder="Create a temporary password" style={inp}/></Field>
+          <div style={{padding:'11px 13px',borderRadius:10,background:'#EFF6FF',border:'1px solid #BFDBFE',fontSize:11.5,color:'#1E40AF',lineHeight:1.55}}>
+            A secure temporary portal password will be generated automatically and shown once after registration.
+          </div>
           <div className="form-grid-2">
             <Field label="Date of Birth (DD/MM/YYYY)"><input value={f.dob} onChange={e=>setF({...f,dob:e.target.value})} placeholder="e.g. 12/05/1990" style={inp}/></Field>
             <Field label="Phone"><input value={f.phone} onChange={e=>setF({...f,phone:e.target.value})} placeholder="e.g. 0244123456" style={inp}/></Field>
@@ -1117,6 +1291,7 @@ const NurseDashboard=()=>{
             <div><strong>Patient ID:</strong> {registeredPatient?.national_patient_id||registeredPatient?.patient_id}</div>
             <div><strong>Portal email:</strong> {registeredPatient?.email||'Not created — add an email before portal login'}</div>
             {registeredPatient?.email&&<div><strong>Temporary password:</strong> {registeredPatient?.temporary_password}</div>}
+            {registeredPatient?.email&&registeredPatient?.temporary_password_expires_at&&<div><strong>Expires:</strong> {fmtDT(registeredPatient.temporary_password_expires_at)}</div>}
           </div>
           <p style={{fontSize:11.5,color:'#64748B',lineHeight:1.6}}>Give these details to the patient securely. After the nurse saves triage, this same account will show the visit in My History.</p>
         </MB>
@@ -3339,11 +3514,14 @@ const AdminUsers=()=>{
   const [loading,setLoading]=React.useState(true);
   const [search,setSearch]=React.useState('');
   const [showAdd,setShowAdd]=React.useState(false);
-  const [f,setF]=React.useState({full_name:'',email:'',password:'',role_id:''});
+  const [f,setF]=React.useState({full_name:'',email:'',role_id:''});
   const [sub,setSub]=React.useState(false);
   const [filter,setFilter]=React.useState('all');
   const [accessTarget,setAccessTarget]=React.useState(null);
   const [updatingAccess,setUpdatingAccess]=React.useState(false);
+  const [resetTarget,setResetTarget]=React.useState(null);
+  const [resettingPassword,setResettingPassword]=React.useState(false);
+  const [issuedCredentials,setIssuedCredentials]=React.useState(null);
   const currentUser=JSON.parse(localStorage.getItem('user')||'{}');
   const isInactiveAccount=user=>String(user?.staff_status||user?.status||'active').toLowerCase()==='inactive';
 
@@ -3356,15 +3534,39 @@ const AdminUsers=()=>{
   React.useEffect(load,[]);
 
   const addStaff=async()=>{
-    if(!f.full_name||!f.email||!f.password||!f.role_id){toast.show('All fields required.','error');return;}
+    if(!f.full_name||!f.email||!f.role_id){toast.show('All fields required.','error');return;}
     setSub(true);
     try{
       const r=await fetch(`${BASE_URL}/api/auth/register`,{method:'POST',headers:ah(),
-        body:JSON.stringify({full_name:f.full_name,email:f.email,password:f.password,role_id:parseInt(f.role_id)})});
+        body:JSON.stringify({full_name:f.full_name,email:f.email,role_id:parseInt(f.role_id)})});
       const d=await r.json();
-      if(r.ok){toast.show(`${f.full_name} added!`);setShowAdd(false);setF({full_name:'',email:'',password:'',role_id:''});setTimeout(load,1000);}
+      if(r.ok){
+        toast.show(`${f.full_name} added!`);
+        setIssuedCredentials({user:d.user,temporary_password:d.temporary_password});
+        setShowAdd(false);
+        setF({full_name:'',email:'',role_id:''});
+        setTimeout(load,1000);
+      }
       else toast.show(d.message||'Failed.','error');
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
+  };
+
+  const resetPassword=async()=>{
+    if(!resetTarget)return;
+    setResettingPassword(true);
+    try{
+      const r=await fetch(`${BASE_URL}/api/users/${resetTarget.user_id}/reset-password`,{
+        method:'POST',headers:ah()
+      });
+      const d=await r.json().catch(()=>({}));
+      if(r.ok){
+        setStaff(prev=>prev.map(s=>String(s.user_id)===String(resetTarget.user_id)?{...s,...d.user}:s));
+        setIssuedCredentials({user:d.user,temporary_password:d.temporary_password});
+        setResetTarget(null);
+        toast.show(`Temporary password issued for ${resetTarget.full_name}.`);
+      }else toast.show(d.message||'Password reset failed.','error');
+    }catch{toast.show('Network error.','error');}
+    finally{setResettingPassword(false);}
   };
 
   const changeAccess=async()=>{
@@ -3436,18 +3638,21 @@ const AdminUsers=()=>{
           {key:'role',label:'Access role',w:'15%'},
           {key:'email',label:'Email address',w:'24%'},
           {key:'stat',label:'Status',w:'11%'},
-          {key:'act',label:'Access',w:'10%'},
+          {key:'act',label:'Access',w:'16%'},
         ]} rows={filtered.map(s=>({
           name:<div className="patient-name-cell"><span className="patient-avatar" style={{background:'#EEF2FF',color:'#4F46E5'}}>{(s.full_name||'U').charAt(0).toUpperCase()}</span><div><strong>{s.full_name||'Unnamed account'}</strong><small>User #{s.user_id||'—'}</small></div></div>,
           sid:<span style={{color:'#64748B',fontFamily:'monospace',fontSize:12,fontWeight:650}}>{s.staff_id||'Portal account'}</span>,
           role:<AdminRoleBadge role={adminRoleOf(s)}/>,
           email:<span style={{color:'#64748B',fontSize:12.5}}>{s.email||'No email recorded'}</span>,
           stat:statusBadge(s.staff_status||s.status||'active'),
-          act:String(s.user_id)===String(currentUser.user_id)
-            ?<Badge text="Current account" color="blue"/>
-            :isInactiveAccount(s)
-              ?<Btn onClick={()=>setAccessTarget(s)} v="blue" sz="sm">Reactivate</Btn>
-              :<Btn onClick={()=>setAccessTarget(s)} v="ghost" sz="sm" style={{color:'#DC2626'}}>Deactivate</Btn>
+          act:<div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+            <Btn onClick={()=>setResetTarget(s)} v="ghost" sz="sm">Reset password</Btn>
+            {String(s.user_id)===String(currentUser.user_id)
+              ?<Badge text="Current account" color="blue"/>
+              :isInactiveAccount(s)
+                ?<Btn onClick={()=>setAccessTarget(s)} v="blue" sz="sm">Reactivate</Btn>
+                :<Btn onClick={()=>setAccessTarget(s)} v="ghost" sz="sm" style={{color:'#DC2626'}}>Deactivate</Btn>}
+          </div>
         }))} empty={search?'No accounts match your search.':'No accounts in this view.'}/>
       }
         </div>
@@ -3461,7 +3666,6 @@ const AdminUsers=()=>{
           </div>
           <Field label="Full Name" required><input value={f.full_name} onChange={e=>setF({...f,full_name:e.target.value})} placeholder="e.g. Dr. Kwame Asante" style={inp}/></Field>
           <Field label="Email" required><input type="email" value={f.email} onChange={e=>setF({...f,email:e.target.value})} placeholder="e.g. kwame@hospital.com" style={inp}/></Field>
-          <Field label="Password" required><input type="password" value={f.password} onChange={e=>setF({...f,password:e.target.value})} placeholder="Temporary password" style={inp}/></Field>
           <Field label="Role" required>
             <select value={f.role_id} onChange={e=>setF({...f,role_id:e.target.value})} style={{...inp,color:f.role_id?'#0F172A':'#94A3B8'}}>
               <option value="">— Select role —</option>
@@ -3472,12 +3676,39 @@ const AdminUsers=()=>{
               <option value="1">Admin</option>
             </select>
           </Field>
-          <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>Share the temporary password securely and ask the staff member to protect their credentials.</p>
+          <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>A secure temporary password will be generated automatically and shown once after the account is created.</p>
         </MB>
         <MF>
           <Btn onClick={()=>setShowAdd(false)} v="ghost">Cancel</Btn>
           <Btn onClick={addStaff} disabled={sub} v="blue">{sub?'Creating...':'Create staff account'}</Btn>
         </MF>
+      </Modal>
+
+      <Modal open={!!resetTarget} onClose={()=>setResetTarget(null)} title="Reset Password" width={440}>
+        <MB>
+          <p style={{fontSize:13,color:'#64748B',lineHeight:1.65}}>Issue a new 72-hour temporary password for <strong>{resetTarget?.full_name}</strong>. Their current password and active sessions will stop working immediately.</p>
+          {isInactiveAccount(resetTarget)&&<div style={{padding:'11px 13px',borderRadius:10,background:'#FFFBEB',border:'1px solid #FDE68A',fontSize:11.5,color:'#92400E'}}>This account is inactive and must also be reactivated before the user can sign in.</div>}
+        </MB>
+        <MF>
+          <Btn onClick={()=>setResetTarget(null)} v="ghost">Cancel</Btn>
+          <Btn onClick={resetPassword} disabled={resettingPassword} v="blue">{resettingPassword?'Resetting...':'Issue temporary password'}</Btn>
+        </MF>
+      </Modal>
+
+      <Modal open={!!issuedCredentials} onClose={()=>setIssuedCredentials(null)} title="Temporary Login Credentials" width={500}>
+        <MB>
+          <div style={{padding:'14px 16px',background:'#ECFDF5',border:'1px solid #A7F3D0',borderRadius:12,color:'#065F46',lineHeight:1.65}}>
+            <strong style={{display:'block',fontSize:14}}>{issuedCredentials?.user?.full_name}</strong>
+            <span style={{fontSize:12}}>Share these credentials securely. The password is shown only in this message.</span>
+          </div>
+          <div style={{display:'grid',gap:10,padding:'14px 16px',background:'#F8FAFC',border:'1px solid #E2E8F0',borderRadius:12,fontSize:13,color:'#475569'}}>
+            <div><strong>Email:</strong> {issuedCredentials?.user?.email}</div>
+            <div><strong>Temporary password:</strong> <span style={{fontFamily:'monospace',fontWeight:800,color:'#0F172A'}}>{issuedCredentials?.temporary_password}</span></div>
+            <div><strong>Expires:</strong> {fmtDT(issuedCredentials?.user?.temporary_password_expires_at)}</div>
+          </div>
+          <p style={{fontSize:11.5,color:'#64748B',lineHeight:1.6}}>The user will be required to create a private password before accessing the EMR.</p>
+        </MB>
+        <MF><Btn onClick={()=>setIssuedCredentials(null)} v="blue">I have saved the credentials</Btn></MF>
       </Modal>
 
       <Modal
@@ -3993,6 +4224,7 @@ const PatientHistory=()=>{
    APP ROUTER
 ══════════════════════════════════════ */
 export default function App(){
+  const protect=(element,roles)=><RequireSession roles={roles}>{element}</RequireSession>;
   return(
     <BrowserRouter>
       <GStyles/>
@@ -4000,33 +4232,34 @@ export default function App(){
         <Route path="/"                      element={<Landing/>}/>
         <Route path="/login"                 element={<Login/>}/>
         <Route path="/patient-login"         element={<PatientLogin/>}/>
+        <Route path="/change-password"       element={<PasswordChange/>}/>
         <Route path="/logout"                element={<LogoutPage/>}/>
         {/* Nurse */}
-        <Route path="/nurse-dashboard"       element={<NurseDashboard/>}/>
-        <Route path="/nurse-patients"        element={<NursePatients/>}/>
-        <Route path="/nurse-triage"          element={<NurseTriage/>}/>
-        <Route path="/nurse-schedule"        element={<AppointmentSchedule/>}/>
-        <Route path="/nurse-patient-profile" element={<NursePatientProfile/>}/>
+        <Route path="/nurse-dashboard"       element={protect(<NurseDashboard/>,['nurse'])}/>
+        <Route path="/nurse-patients"        element={protect(<NursePatients/>,['nurse'])}/>
+        <Route path="/nurse-triage"          element={protect(<NurseTriage/>,['nurse'])}/>
+        <Route path="/nurse-schedule"        element={protect(<AppointmentSchedule/>,['nurse'])}/>
+        <Route path="/nurse-patient-profile" element={protect(<NursePatientProfile/>,['nurse'])}/>
         {/* Doctor */}
-        <Route path="/doctor-dashboard"      element={<DoctorDashboard/>}/>
-        <Route path="/doctor-patients"       element={<DoctorPatients/>}/>
-        <Route path="/doctor-schedule"       element={<DoctorSchedule/>}/>
-        <Route path="/doctor-patient-view"   element={<DoctorPatientView/>}/>
-        <Route path="/doctor-consultation"   element={<DoctorConsultation/>}/>
-        <Route path="/doctor-lab"            element={<DoctorLab/>}/>
+        <Route path="/doctor-dashboard"      element={protect(<DoctorDashboard/>,['doctor'])}/>
+        <Route path="/doctor-patients"       element={protect(<DoctorPatients/>,['doctor'])}/>
+        <Route path="/doctor-schedule"       element={protect(<DoctorSchedule/>,['doctor'])}/>
+        <Route path="/doctor-patient-view"   element={protect(<DoctorPatientView/>,['doctor'])}/>
+        <Route path="/doctor-consultation"   element={protect(<DoctorConsultation/>,['doctor'])}/>
+        <Route path="/doctor-lab"            element={protect(<DoctorLab/>,['doctor'])}/>
         {/* Lab */}
-        <Route path="/lab-dashboard"         element={<LabDashboard/>}/>
-        <Route path="/lab-queue"             element={<LabQueue/>}/>
+        <Route path="/lab-dashboard"         element={protect(<LabDashboard/>,['lab_technician'])}/>
+        <Route path="/lab-queue"             element={protect(<LabQueue/>,['lab_technician'])}/>
         {/* Pharmacist */}
-        <Route path="/pharm-dashboard"       element={<PharmDashboard/>}/>
-        <Route path="/pharm-inventory"       element={<PharmInventory/>}/>
+        <Route path="/pharm-dashboard"       element={protect(<PharmDashboard/>,['pharmacist'])}/>
+        <Route path="/pharm-inventory"       element={protect(<PharmInventory/>,['pharmacist'])}/>
         {/* Admin */}
-        <Route path="/admin-dashboard"       element={<AdminDashboard/>}/>
-        <Route path="/admin-users"           element={<AdminUsers/>}/>
-        <Route path="/admin-logs"            element={<AdminLogs/>}/>
+        <Route path="/admin-dashboard"       element={protect(<AdminDashboard/>,['admin'])}/>
+        <Route path="/admin-users"           element={protect(<AdminUsers/>,['admin'])}/>
+        <Route path="/admin-logs"            element={protect(<AdminLogs/>,['admin'])}/>
         {/* Patient */}
-        <Route path="/patient-dashboard"     element={<PatientDashboard/>}/>
-        <Route path="/patient-history"       element={<PatientHistory/>}/>
+        <Route path="/patient-dashboard"     element={protect(<PatientDashboard/>,['patient'])}/>
+        <Route path="/patient-history"       element={protect(<PatientHistory/>,['patient'])}/>
       </Routes>
     </BrowserRouter>
   );

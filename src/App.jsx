@@ -2,9 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, Link, useLocation } from 'react-router-dom';
 
 const PRODUCTION_API_URL = 'https://emr-backend-production-5ebf.up.railway.app';
-const isLocalFrontend = ['localhost','127.0.0.1'].includes(window.location.hostname);
-const BASE_URL = import.meta.env.VITE_API_URL
-  || (isLocalFrontend?'http://localhost:5000':PRODUCTION_API_URL);
+const BASE_URL = import.meta.env.VITE_API_URL || PRODUCTION_API_URL;
 
 const ROLE_HOME={
   admin:'/admin-dashboard',doctor:'/doctor-dashboard',nurse:'/nurse-dashboard',

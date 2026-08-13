@@ -257,6 +257,17 @@ const GStyles = () => (
     ::-webkit-scrollbar{width:7px;height:7px;}
     ::-webkit-scrollbar-track{background:transparent;}
     ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:10px;}
+    .route-progress{position:fixed;inset:0 0 auto;z-index:10000;height:3px;pointer-events:none;overflow:hidden;opacity:0;transition:opacity .16s ease;}
+    .route-progress.is-active{opacity:1;}
+    .route-progress-bar{display:block;height:100%;width:100%;transform-origin:left;background:linear-gradient(90deg,#14b8a6,#2563eb 72%,#7c3aed);box-shadow:0 0 12px rgba(20,184,166,.55);animation:route-progress .55s cubic-bezier(.2,.75,.25,1) both;}
+    .route-stage{min-height:100vh;animation:route-enter .24s ease-out both;}
+    .inline-spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.38);border-top-color:currentColor;border-radius:50%;display:inline-block;flex:0 0 auto;animation:spinner-turn .65s linear infinite;}
+    .portal-card:disabled{cursor:wait;opacity:.82;transform:none;}
+    .portal-card.is-opening{border-color:#5eead4;background:#f0fdfa;box-shadow:0 10px 28px rgba(15,118,110,.11);}
+    .portal-card .inline-spinner{color:#0f766e;border-color:rgba(15,118,110,.22);border-top-color:#0f766e;}
+    @keyframes route-progress{0%{transform:scaleX(.06)}55%{transform:scaleX(.72)}100%{transform:scaleX(1)}}
+    @keyframes route-enter{from{opacity:.68;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes spinner-turn{to{transform:rotate(360deg)}}
     .emr-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.98);box-shadow:0 8px 18px rgba(16,27,50,.12);}
     .emr-btn:active:not(:disabled){transform:translateY(0);}
     .emr-table-shell{box-shadow:var(--shadow-sm);}
@@ -484,6 +495,8 @@ const Toast=({msg,type})=>!msg?null:(
 
 /* ── PRIMITIVES ── */
 const inp={width:'100%',padding:'12px 14px',border:'1px solid #DDE4ED',borderRadius:10,fontSize:14,outline:'none',backgroundColor:'white',color:'#172033'};
+
+const InlineSpinner=()=> <span className="inline-spinner" aria-hidden="true"/>;
 
 const Btn=({onClick,disabled,v='primary',sz='md',children,style={},type='button'})=>{
   const S={sm:{padding:'7px 14px',fontSize:12},md:{padding:'11px 22px',fontSize:14},lg:{padding:'14px 30px',fontSize:15}};
@@ -740,6 +753,12 @@ const AuthBrand=({kicker='Secure digital care',title,copy,landing=false,brandSub
 
 const Landing=()=>{
   const nv=useNavigate();
+  const [opening,setOpening]=React.useState('');
+  const openPortal=(path,label)=>{
+    if(opening)return;
+    setOpening(label);
+    window.setTimeout(()=>nv(path),260);
+  };
   return(
     <div className="auth-shell">
       <AuthBrand
@@ -755,15 +774,15 @@ const Landing=()=>{
           <h2>Choose your portal</h2>
           <p className="auth-form-copy">Select the portal assigned to your account.</p>
           <div style={{display:'flex',flexDirection:'column',gap:12}}>
-            <button type="button" className="portal-card" onClick={()=>nv('/login')}>
+            <button type="button" className={`portal-card${opening==='Staff'?' is-opening':''}`} disabled={Boolean(opening)} aria-busy={opening==='Staff'} onClick={()=>openPortal('/login','Staff')}>
               <span className="portal-icon portal-icon-staff"><PortalIcon type="staff"/></span>
-              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Staff portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Doctors, nurses, laboratory, pharmacy and administration</span></span>
-              <span className="portal-arrow">→</span>
+              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>{opening==='Staff'?'Opening staff portal...':'Staff portal'}</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Doctors, nurses, laboratory, pharmacy and administration</span></span>
+              <span className="portal-arrow">{opening==='Staff'?<InlineSpinner/>:'→'}</span>
             </button>
-            <button type="button" className="portal-card" onClick={()=>nv('/patient-login')}>
+            <button type="button" className={`portal-card${opening==='Patient'?' is-opening':''}`} disabled={Boolean(opening)} aria-busy={opening==='Patient'} onClick={()=>openPortal('/patient-login','Patient')}>
               <span className="portal-icon"><PortalIcon type="patient"/></span>
-              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>Patient portal</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Appointments, prescriptions, laboratory results and visit history</span></span>
-              <span className="portal-arrow">→</span>
+              <span><strong style={{display:'block',fontSize:14,color:'#172033'}}>{opening==='Patient'?'Opening patient portal...':'Patient portal'}</strong><span style={{fontSize:12,color:'#7A879A',marginTop:3,display:'block',lineHeight:1.45}}>Appointments, prescriptions, laboratory results and visit history</span></span>
+              <span className="portal-arrow">{opening==='Patient'?<InlineSpinner/>:'→'}</span>
             </button>
           </div>
           <p style={{marginTop:28,fontSize:11,color:'#9AA5B5',lineHeight:1.6,textAlign:'center'}}>Authorized users only. Sign-in activity is recorded.</p>
@@ -852,7 +871,7 @@ const Login=()=>{
               </div>
             </Field>
             <Btn onClick={go} disabled={loading} v="primary" sz="lg" style={{width:'100%',justifyContent:'center'}}>
-              {loading?'Signing in...':'Login to Dashboard'}
+              {loading&&<InlineSpinner/>}{loading?'Signing in...':'Login to Dashboard'}
             </Btn>
           </div>
           <p style={{marginTop:14,textAlign:'center',fontSize:13,color:'#94A3B8'}}>
@@ -929,7 +948,7 @@ const PatientLogin=()=>{
               </div>
             </Field>
             <Btn onClick={go} disabled={loading} v="primary" sz="lg" style={{width:'100%',justifyContent:'center'}}>
-              {loading?'Signing in...':'Sign In'}
+              {loading&&<InlineSpinner/>}{loading?'Signing in...':'Sign In'}
             </Btn>
           </div>
           <p style={{marginTop:14,textAlign:'center',fontSize:13,color:'#94A3B8'}}>
@@ -1022,7 +1041,7 @@ const PasswordChange=()=>{
               <input type="checkbox" checked={showPassword} onChange={e=>setShowPassword(e.target.checked)}/> Show passwords
             </label>
             <Btn onClick={changePassword} disabled={loading} v="primary" sz="lg" style={{width:'100%',justifyContent:'center'}}>
-              {loading?'Changing password...':'Change password and continue'}
+              {loading&&<InlineSpinner/>}{loading?'Changing password...':'Change password and continue'}
             </Btn>
             <button type="button" onClick={cancel} style={{border:0,background:'none',color:'#64748B',fontSize:12,fontWeight:700,cursor:'pointer'}}>Cancel and return to sign in</button>
           </div>
@@ -4221,12 +4240,32 @@ const PatientHistory=()=>{
 /* ══════════════════════════════════════
    APP ROUTER
 ══════════════════════════════════════ */
-export default function App(){
+const RouteProgress=()=>{
+  const location=useLocation();
+  const [active,setActive]=React.useState(true);
+
+  React.useEffect(()=>{
+    setActive(true);
+    window.scrollTo({top:0,left:0,behavior:'auto'});
+    const timer=window.setTimeout(()=>setActive(false),560);
+    return()=>window.clearTimeout(timer);
+  },[location.pathname,location.search]);
+
+  return(
+    <div className={`route-progress${active?' is-active':''}`} role="progressbar" aria-label="Loading page" aria-hidden={!active}>
+      <span key={`${location.pathname}${location.search}`} className="route-progress-bar"/>
+    </div>
+  );
+};
+
+const AppRoutes=()=>{
+  const location=useLocation();
   const protect=(element,roles)=><RequireSession roles={roles}>{element}</RequireSession>;
   return(
-    <BrowserRouter>
-      <GStyles/>
-      <Routes>
+    <>
+      <RouteProgress/>
+      <div className="route-stage" key={`${location.pathname}${location.search}`}>
+      <Routes location={location}>
         <Route path="/"                      element={<Landing/>}/>
         <Route path="/login"                 element={<Login/>}/>
         <Route path="/patient-login"         element={<PatientLogin/>}/>
@@ -4259,6 +4298,16 @@ export default function App(){
         <Route path="/patient-dashboard"     element={protect(<PatientDashboard/>,['patient'])}/>
         <Route path="/patient-history"       element={protect(<PatientHistory/>,['patient'])}/>
       </Routes>
+      </div>
+    </>
+  );
+};
+
+export default function App(){
+  return(
+    <BrowserRouter>
+      <GStyles/>
+      <AppRoutes/>
     </BrowserRouter>
   );
 }

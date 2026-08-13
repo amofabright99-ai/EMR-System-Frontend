@@ -266,7 +266,7 @@ const GStyles = () => (
     .portal-card.is-opening{border-color:#5eead4;background:#f0fdfa;box-shadow:0 10px 28px rgba(15,118,110,.11);}
     .portal-card .inline-spinner{color:#0f766e;border-color:rgba(15,118,110,.22);border-top-color:#0f766e;}
     @keyframes route-progress{0%{transform:scaleX(.06)}55%{transform:scaleX(.72)}100%{transform:scaleX(1)}}
-    @keyframes route-enter{from{opacity:.68;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes route-enter{from{opacity:.68}to{opacity:1}}
     @keyframes spinner-turn{to{transform:rotate(360deg)}}
     .emr-btn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(.98);box-shadow:0 8px 18px rgba(16,27,50,.12);}
     .emr-btn:active:not(:disabled){transform:translateY(0);}
@@ -543,6 +543,10 @@ const statusBadge=s=>{
 
 /* ── MODAL ── */
 const Modal=({open,onClose,title,width=480,children})=>{
+  const scrollRef=React.useRef(null);
+  React.useLayoutEffect(()=>{
+    if(open&&scrollRef.current)scrollRef.current.scrollTop=0;
+  },[open]);
   React.useEffect(()=>{
     if(!open)return undefined;
     const close=e=>e.key==='Escape'&&onClose();
@@ -556,20 +560,20 @@ const Modal=({open,onClose,title,width=480,children})=>{
     <div onMouseDown={e=>e.target===e.currentTarget&&onClose()} style={{position:'fixed',inset:0,backgroundColor:'rgba(8,15,29,.58)',backdropFilter:'blur(4px)',display:'flex',
       alignItems:'center',justifyContent:'center',zIndex:500,padding:16}}>
       <div role="dialog" aria-modal="true" aria-label={title} style={{width:`min(${width}px,96vw)`,backgroundColor:'white',borderRadius:18,
-        boxShadow:'0 30px 80px rgba(8,15,29,.25)',overflow:'hidden',maxHeight:'92vh',display:'flex',flexDirection:'column'}}>
+        boxShadow:'0 30px 80px rgba(8,15,29,.25)',overflow:'hidden',maxHeight:'calc(100dvh - 32px)',display:'flex',flexDirection:'column'}}>
         <div style={{padding:'21px 26px',borderBottom:'1px solid #EDF1F5',
           display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
           <h3 style={{fontSize:18,fontWeight:800,color:'#172033'}}>{title}</h3>
           <button type="button" aria-label="Close dialog" onClick={onClose} style={{width:34,height:34,display:'grid',placeItems:'center',background:'#F8FAFC',border:'1px solid #E5EAF1',borderRadius:9,cursor:'pointer',fontSize:20,color:'#64748B',lineHeight:1}}>×</button>
         </div>
-        <div style={{overflowY:'auto',flex:1}}>{children}</div>
+        <div ref={scrollRef} style={{overflowY:'auto',overscrollBehavior:'contain',flex:1,minHeight:0}}>{children}</div>
       </div>
     </div>
   );
 };
 const MB=({children})=><div style={{padding:'20px 26px',display:'flex',flexDirection:'column',gap:16}}>{children}</div>;
 const MF=({children})=>(
-  <div style={{padding:'14px 26px 20px',borderTop:'1px solid #F1F5F9',display:'flex',justifyContent:'flex-end',gap:10,flexShrink:0}}>{children}</div>
+  <div style={{position:'sticky',bottom:0,zIndex:2,padding:'14px 26px 20px',borderTop:'1px solid #F1F5F9',display:'flex',justifyContent:'flex-end',gap:10,flexShrink:0,background:'white',boxShadow:'0 -10px 22px rgba(16,27,50,.04)'}}>{children}</div>
 );
 
 /* ── TABLE ── */

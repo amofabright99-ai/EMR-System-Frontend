@@ -471,6 +471,10 @@ const GStyles = () => (
       .lab-test-grid{grid-template-columns:1fr;}
       .consult-footer-actions{align-items:stretch;flex-direction:column;bottom:7px;}
       .consult-footer-actions>*{width:100%;}
+      .appointment-modal-footer{flex-wrap:wrap;}
+      .appointment-modal-footer>div{display:none;}
+      .appointment-modal-footer>.emr-btn{flex:1 1 calc(50% - 5px);justify-content:center;}
+      .appointment-modal-footer>.emr-btn-danger{flex-basis:100%;}
     }
     @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto !important;transition:none !important;animation:none !important;}}
   `}</style>
@@ -572,8 +576,8 @@ const Modal=({open,onClose,title,width=480,children})=>{
   );
 };
 const MB=({children})=><div style={{padding:'20px 26px',display:'flex',flexDirection:'column',gap:16}}>{children}</div>;
-const MF=({children})=>(
-  <div style={{position:'sticky',bottom:0,zIndex:2,padding:'14px 26px 20px',borderTop:'1px solid #F1F5F9',display:'flex',justifyContent:'flex-end',gap:10,flexShrink:0,background:'white',boxShadow:'0 -10px 22px rgba(16,27,50,.04)'}}>{children}</div>
+const MF=({children,className=''})=>(
+  <div className={className} style={{position:'sticky',bottom:0,zIndex:2,padding:'14px 26px 20px',borderTop:'1px solid #F1F5F9',display:'flex',justifyContent:'flex-end',gap:10,flexShrink:0,background:'white',boxShadow:'0 -10px 22px rgba(16,27,50,.04)'}}>{children}</div>
 );
 
 /* ── TABLE ── */
@@ -1889,7 +1893,7 @@ const AppointmentSchedule=()=>{
           </Field>
           <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>Confirm the final arrangement with the patient. The selected doctor, date, time, and any changes will be visible in the patient portal and audit trail.</p>
         </MB>
-        <MF>
+        <MF className="appointment-modal-footer">
           <Btn onClick={cancel} disabled={sub} v="danger">Cancel appointment</Btn>
           <div style={{flex:1}}/>
           <Btn onClick={()=>setSelected(null)} disabled={sub} v="ghost">Close</Btn>

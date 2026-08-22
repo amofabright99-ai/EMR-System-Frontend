@@ -3942,8 +3942,11 @@ const AdminReports=()=>{
     setFilters(f=>({...f,from_date:fmt(from),to_date:fmt(to)}));
   };
 
-  const diagnosisCounts=results.reduce((a,r)=>{const d=r.diagnosis||'Unknown';a[d]=(a[d]||0)+1;return a;},{});
-  const topDiagnoses=Object.entries(diagnosisCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+const diagnosisCounts=results.reduce((a,r)=>{
+  if(!r.diagnosis||r.diagnosis.trim()==='')return a;
+  a[r.diagnosis]=(a[r.diagnosis]||0)+1;return a;
+},{});  
+const topDiagnoses=Object.entries(diagnosisCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const doctorCounts=results.reduce((a,r)=>{const d=r.doctor_name||'Unknown';a[d]=(a[d]||0)+1;return a;},{});
   const uniquePatients=new Set(results.map(r=>r.national_patient_id)).size;
 
@@ -4049,8 +4052,7 @@ const AdminReports=()=>{
               <div style={{padding:'18px 22px',display:'flex',flexWrap:'wrap',gap:12}}>
                 {Object.entries(doctorCounts).sort((a,b)=>b[1]-a[1]).map(([name,count])=>(
                   <div key={name} style={{padding:'12px 18px',borderRadius:12,border:'1px solid #E5EAF1',background:'white',minWidth:160}}>
-                    <p style={{fontSize:11,color:'#8490A3',fontWeight:700,marginBottom:4}}>Dr. {name}</p>
-                    <p style={{fontSize:22,fontWeight:800,color:'#172033',fontFamily:'Manrope,sans-serif'}}>{count}</p>
+                    <p style={{fontSize:11,color:'#8490A3',fontWeight:700,marginBottom:4}}>{name.startsWith('Dr.')?name:`Dr. ${name}`}</p>                    <p style={{fontSize:22,fontWeight:800,color:'#172033',fontFamily:'Manrope,sans-serif'}}>{count}</p>
                     <p style={{fontSize:11,color:'#8490A3'}}>patient{count!==1?'s':''}</p>
                   </div>
                 ))}
@@ -4082,8 +4084,7 @@ const AdminReports=()=>{
                   pid:<span style={{fontFamily:'monospace',fontSize:11,background:'#F1F5F9',padding:'2px 8px',borderRadius:6,color:'#64748B'}}>{r.national_patient_id||'—'}</span>,
                   name:<div className="patient-name-cell"><span className="patient-avatar">{(r.patient_name||'?').charAt(0)}</span><div><strong>{r.patient_name||'—'}</strong></div></div>,
                   diag:<span style={{fontWeight:600,fontSize:13}}>{r.diagnosis||'—'}</span>,
-                  dr:<span style={{fontSize:13,color:'#64748B'}}>{r.doctor_name?`Dr. ${r.doctor_name}`:'—'}</span>,
-                  bp:<span style={{fontWeight:700,fontSize:13}}>{r.blood_pressure||'—'}</span>,
+dr:<span style={{fontSize:13,color:'#64748B'}}>{r.doctor_name?(r.doctor_name.startsWith('Dr.')?r.doctor_name:`Dr. ${r.doctor_name}`):'—'}</span>,                  bp:<span style={{fontWeight:700,fontSize:13}}>{r.blood_pressure||'—'}</span>,
                   hr:<span style={{fontWeight:700,fontSize:13}}>{r.pulse_rate||'—'}</span>,
                 }))}
                 empty="No records match your filters."

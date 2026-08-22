@@ -3361,12 +3361,13 @@ const PharmInventory=()=>{
 };
 
 /* ══════════════════════════════════════
-   ADMIN MODULE
+  ADMIN MODULE
 ══════════════════════════════════════ */
 const adminNav=[
   {path:'/admin-dashboard',label:'Overview',         icon:'▦'},
   {path:'/admin-users',    label:'Users & Access',   icon:'◎'},
   {path:'/admin-logs',     label:'Audit Trail',      icon:'≡'},
+  {path:'/admin-reports',  label:'Reports',          icon:'▤'},
 ];
 
 const adminRoleOf=user=>String(user?.role||user?.role_name||'Unknown').trim();
@@ -3901,6 +3902,205 @@ const AdminLogs=()=>{
 };
 
 /* ══════════════════════════════════════
+   ADMIN REPORTS
+══════════════════════════════════════ */
+const AdminReports=()=>{
+  const [results,setResults]=React.useState([]);
+  const [loading,setLoading]=React.useState(false);
+  const [searched,setSearched]=React.useState(false);
+  const [filters,setFilters]=React.useState({from_date:'',to_date:'',diagnosis:'',doctor_id:''});
+  const [doctors,setDoctors]=React.useState([]);
+  const toast=useToast();
+
+  React.useEffect(()=>{
+    fetch(`${BASE_URL}/api/users`,{headers:ah()})
+      .then(r=>r.json())
+      .then(d=>setDoctors(Array.isArray(d)?d.filter(u=>(u.role||'').toLowerCase()==='doctor'):[]))
+      .catch(()=>{});
+  },[]);
+
+  const runReport=async()=>{
+    setLoading(true);setSearched(true);
+    try{
+      const params=new URLSearchParams();
+      if(filters.from_date) params.append('from_date',filters.from_date);
+      if(filters.to_date)   params.append('to_date',filters.to_date);
+      if(filters.diagnosis) params.append('diagnosis',filters.diagnosis);
+      if(filters.doctor_id) params.append('doctor_id',filters.doctor_id);
+      const r=await fetch(`${BASE_URL}/api/patients/reports?${params}`,{headers:ah()});
+      const d=await r.json();
+      setResults(Array.isArray(d)?d:[]);
+    }catch{toast.show('Failed to load report.','error');}
+    finally{setLoading(false);}
+  };
+
+  const quickFilter=(days)=>{
+    const to=new Date();
+    const from=new Date();
+    from.setDate(from.getDate()-days);
+    const fmt=d=>d.toISOString().split('T')[0];
+    setFilters(f=>({...f,from_date:fmt(from),to_date:fmt(to)}));
+  };
+
+  const diagnosisCounts=results.reduce((a,r)=>{const d=r.diagnosis||'Unknown';a[d]=(a[d]||0)+1;return a;},{});
+  const topDiagnoses=Object.entries(diagnosisCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const doctorCounts=results.reduce((a,r)=>{const d=r.doctor_name||'Unknown';a[d]=(a[d]||0)+1;return a;},{});
+  const uniquePatients=new Set(results.map(r=>r.national_patient_id)).size;
+
+  return(
+    <AL nav={adminNav} title="Reports & Analytics">
+      <NursePageIntro kicker="Hospital Intelligence" title="Patient visit reports" description="Filter records by date range, diagnosis, or doctor to generate reports for any period. Use the quick filters to jump to common time ranges.">
+        <Btn onClick={()=>{setFilters({from_date:'',to_date:'',diagnosis:'',doctor_id:''});setResults([]);setSearched(false);}} v="ghost" sz="sm">Clear all</Btn>
+      </NursePageIntro>
+
+      {/* Filter panel */}
+      <section className="clinical-panel" style={{marginBottom:20}}>
+        <div className="clinical-panel-header">
+          <div><h3 style={{fontSize:16,color:'#1E293B'}}>Filter options</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>Select your criteria then click Generate Report</p></div>
+        </div>
+        <div style={{padding:'18px 22px'}}>
+          {/* Quick filters */}
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:18,flexWrap:'wrap'}}>
+            <span style={{fontSize:11,fontWeight:700,color:'#8490A3',textTransform:'uppercase',letterSpacing:.6,marginRight:4}}>Quick:</span>
+            {[{label:'Last 7 days',days:7},{label:'Last 2 weeks',days:14},{label:'Last month',days:30},{label:'Last 3 months',days:90},{label:'Last 6 months',days:180}].map(q=>(
+              <button key={q.days} onClick={()=>quickFilter(q.days)}
+                className="filter-pill">
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="form-grid-2" style={{marginBottom:16}}>
+            <div className="form-grid-2">
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>From date</label>
+                <input type="date" value={filters.from_date} onChange={e=>setFilters({...filters,from_date:e.target.value})} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>To date</label>
+                <input type="date" value={filters.to_date} onChange={e=>setFilters({...filters,to_date:e.target.value})} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
+              </div>
+            </div>
+            <div className="form-grid-2">
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Diagnosis keyword</label>
+                <input value={filters.diagnosis} onChange={e=>setFilters({...filters,diagnosis:e.target.value})} placeholder="e.g. Malaria, Typhoid, Hypertension..." style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
+              </div>
+              <div>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Doctor</label>
+                <select value={filters.doctor_id} onChange={e=>setFilters({...filters,doctor_id:e.target.value})} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13,color:filters.doctor_id?'#172033':'#9aa5b5'}}>
+                  <option value="">All doctors</option>
+                  {doctors.map(d=><option key={d.user_id} value={d.user_id}>{d.full_name}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style={{display:'flex',alignItems:'center',gap:12}}>
+            <Btn onClick={runReport} disabled={loading} v="primary">
+              {loading?'Generating...':'▤ Generate Report'}
+            </Btn>
+            {searched&&!loading&&<span style={{fontSize:13,color:'#748197',fontWeight:600}}>{results.length} record(s) found · {uniquePatients} unique patient(s)</span>}
+          </div>
+        </div>
+      </section>
+
+      {/* Summary stats */}
+      {searched&&!loading&&results.length>0&&(
+        <>
+          <div className="nurse-mini-stats" style={{marginBottom:20}}>
+            <NurseMiniStat symbol="≡" value={results.length} label="Total visits" color="#0F766E" bg="#ECFDF5"/>
+            <NurseMiniStat symbol="◎" value={uniquePatients} label="Unique patients" color="#2563EB" bg="#EFF6FF"/>
+            <NurseMiniStat symbol="+" value={Object.keys(diagnosisCounts).length} label="Diagnoses recorded" color="#7C3AED" bg="#F5F3FF"/>
+            <NurseMiniStat symbol="D" value={Object.keys(doctorCounts).length} label="Doctors involved" color="#D97706" bg="#FFFBEB"/>
+          </div>
+
+          {/* Top diagnoses bar */}
+          {topDiagnoses.length>0&&(
+            <section className="clinical-panel" style={{marginBottom:20}}>
+              <div className="clinical-panel-header">
+                <div><h3 style={{fontSize:16,color:'#1E293B'}}>Top diagnoses in this period</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>Most frequently recorded conditions</p></div>
+              </div>
+              <div style={{padding:'18px 22px',display:'flex',flexDirection:'column',gap:12}}>
+                {topDiagnoses.map(([name,count],i)=>(
+                  <div key={name} style={{display:'flex',alignItems:'center',gap:14}}>
+                    <span style={{fontSize:11,fontWeight:800,color:'#94A3B8',width:18,textAlign:'right'}}>{i+1}</span>
+                    <div style={{flex:1}}>
+                      <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                        <span style={{fontSize:13,fontWeight:700,color:'#172033'}}>{name}</span>
+                        <span style={{fontSize:13,fontWeight:800,color:'#0F766E'}}>{count} case{count!==1?'s':''}</span>
+                      </div>
+                      <div style={{height:7,background:'#F1F5F9',borderRadius:99,overflow:'hidden'}}>
+                        <div style={{height:'100%',borderRadius:99,background:'linear-gradient(90deg,#0F766E,#2DD4BF)',width:`${(count/results.length)*100}%`}}/>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Doctor breakdown */}
+          {Object.keys(doctorCounts).length>1&&(
+            <section className="clinical-panel" style={{marginBottom:20}}>
+              <div className="clinical-panel-header">
+                <div><h3 style={{fontSize:16,color:'#1E293B'}}>Visits by doctor</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>How many patients each doctor saw in this period</p></div>
+              </div>
+              <div style={{padding:'18px 22px',display:'flex',flexWrap:'wrap',gap:12}}>
+                {Object.entries(doctorCounts).sort((a,b)=>b[1]-a[1]).map(([name,count])=>(
+                  <div key={name} style={{padding:'12px 18px',borderRadius:12,border:'1px solid #E5EAF1',background:'white',minWidth:160}}>
+                    <p style={{fontSize:11,color:'#8490A3',fontWeight:700,marginBottom:4}}>Dr. {name}</p>
+                    <p style={{fontSize:22,fontWeight:800,color:'#172033',fontFamily:'Manrope,sans-serif'}}>{count}</p>
+                    <p style={{fontSize:11,color:'#8490A3'}}>patient{count!==1?'s':''}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Full results table */}
+          <section className="clinical-panel">
+            <div className="clinical-panel-header">
+              <div><h3 style={{fontSize:16,color:'#1E293B'}}>Detailed records</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>{results.length} visit record(s) matching your filters</p></div>
+              <button onClick={()=>window.print()} style={{padding:'8px 16px',background:'#F8FAFC',border:'1px solid #E5EAF1',borderRadius:9,cursor:'pointer',fontSize:12,fontWeight:700,color:'#475569'}}>
+                Print report
+              </button>
+            </div>
+            <div style={{padding:18}}>
+              <Table
+                cols={[
+                  {key:'date', label:'Date',       w:'11%'},
+                  {key:'pid',  label:'Patient ID', w:'11%'},
+                  {key:'name', label:'Patient',    w:'18%'},
+                  {key:'diag', label:'Diagnosis',  w:'22%'},
+                  {key:'dr',   label:'Doctor',     w:'18%'},
+                  {key:'bp',   label:'BP',         w:'10%'},
+                  {key:'hr',   label:'HR',         w:'10%'},
+                ]}
+                rows={results.map(r=>({
+                  date:<span style={{fontSize:12,color:'#64748B'}}>{fmtDate(r.record_date)}</span>,
+                  pid:<span style={{fontFamily:'monospace',fontSize:11,background:'#F1F5F9',padding:'2px 8px',borderRadius:6,color:'#64748B'}}>{r.national_patient_id||'—'}</span>,
+                  name:<div className="patient-name-cell"><span className="patient-avatar">{(r.patient_name||'?').charAt(0)}</span><div><strong>{r.patient_name||'—'}</strong></div></div>,
+                  diag:<span style={{fontWeight:600,fontSize:13}}>{r.diagnosis||'—'}</span>,
+                  dr:<span style={{fontSize:13,color:'#64748B'}}>{r.doctor_name?`Dr. ${r.doctor_name}`:'—'}</span>,
+                  bp:<span style={{fontWeight:700,fontSize:13}}>{r.blood_pressure||'—'}</span>,
+                  hr:<span style={{fontWeight:700,fontSize:13}}>{r.pulse_rate||'—'}</span>,
+                }))}
+                empty="No records match your filters."
+              />
+            </div>
+          </section>
+        </>
+      )}
+
+      {searched&&!loading&&results.length===0&&(
+        <NurseEmptyState symbol="▤" title="No records found" description="No visit records match your selected filters. Try adjusting the date range or removing the diagnosis keyword."/>
+      )}
+    </AL>
+  );
+};
+
+/* ══════════════════════════════════════
    PATIENT PORTAL
 ══════════════════════════════════════ */
 const patientNav=[
@@ -4302,6 +4502,7 @@ const AppRoutes=()=>{
         <Route path="/admin-dashboard"       element={protect(<AdminDashboard/>,['admin'])}/>
         <Route path="/admin-users"           element={protect(<AdminUsers/>,['admin'])}/>
         <Route path="/admin-logs"            element={protect(<AdminLogs/>,['admin'])}/>
+        <Route path="/admin-reports"         element={protect(<AdminReports/>,['admin'])}/>
         {/* Patient */}
         <Route path="/patient-dashboard"     element={protect(<PatientDashboard/>,['patient'])}/>
         <Route path="/patient-history"       element={protect(<PatientHistory/>,['patient'])}/>

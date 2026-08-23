@@ -2473,9 +2473,9 @@ const DoctorConsultation=()=>{
     setSendingRx(true);
     try{
       const r=await fetch(`${BASE_URL}/api/prescriptions`,{method:'POST',headers:ah(),
-        body:JSON.stringify({patient_id:patientId,encounter_id:encounterId,medication_name:rx.med,dosage:rx.dose,frequency:rx.freq,duration:rx.dur})});
+        body:JSON.stringify({patient_id:patientId,encounter_id:encounterId,medication_name:rx.med,dosage:rx.dose,frequency:rx.freq,duration:rx.dur,notes:rx.notes||''})});
       const body=await r.json().catch(()=>({}));
-      if(r.ok){if(body.encounter_id)setEncounterId(body.encounter_id);toast.show('Prescription sent to pharmacy!');setShowRx(false);setRx({med:'',dose:'',freq:'',dur:''});load();}
+      if(r.ok){if(body.encounter_id)setEncounterId(body.encounter_id);toast.show('Prescription sent to pharmacy!');setShowRx(false);setRx({med:'',dose:'',freq:'',dur:'',notes:''});load();}
       else toast.show(body.message||'Failed.','error');
     }catch{toast.show('Network error.','error');}finally{setSendingRx(false);}
   };
@@ -2654,7 +2654,7 @@ const pt = data.patient || data || {};
         </MF>
       </Modal>
 
-      <Modal open={showRx} onClose={()=>{setShowRx(false);setRx({med:'',dose:'',freq:'',dur:''});}} title="Prescribe Medication" width={480}>
+      <Modal open={showRx} onClose={()=>{setShowRx(false);setRx({med:'',dose:'',freq:'',dur:'',notes:''});}} title="Prescribe Medication" width={480}>
         <MB>
           <div className="vitals-patient-card">
             <span className="patient-avatar">{(pt.full_name||'P').charAt(0).toUpperCase()}</span>
@@ -2669,12 +2669,17 @@ const pt = data.patient || data || {};
             <Field label="Frequency"><input value={rx.freq} onChange={e=>setRx({...rx,freq:e.target.value})} placeholder="e.g. Twice daily" style={inp}/></Field>
           </div>
           <Field label="Duration"><input value={rx.dur} onChange={e=>setRx({...rx,dur:e.target.value})} placeholder="e.g. 3 days" style={inp}/></Field>
+          <Field label="Reason for Prescribing (visible to pharmacist)">
+            <textarea value={rx.notes||''} onChange={e=>setRx({...rx,notes:e.target.value})}
+              placeholder="e.g. Prescribed for hypertension management, patient has history of high BP..."
+              style={{...inp,height:80,resize:'none',lineHeight:1.6}}/>
+          </Field>
           <div style={{padding:'11px 14px',backgroundColor:'#FFFBEB',borderRadius:10,border:'1px solid #FDE68A',fontSize:12,color:'#92400E',lineHeight:1.55}}>
             <strong>Verify before sending.</strong> This medication order will be sent directly to the pharmacy queue.
           </div>
         </MB>
         <MF>
-          <Btn onClick={()=>{setShowRx(false);setRx({med:'',dose:'',freq:'',dur:''}); }} v="ghost">Cancel</Btn>
+          <Btn onClick={()=>{setShowRx(false);setRx({med:'',dose:'',freq:'',dur:'',notes:''}); }} v="ghost">Cancel</Btn>
           <Btn onClick={sendRx} disabled={sendingRx} v="blue">{sendingRx?'Sending...':'Send to Pharmacy'}</Btn>
         </MF>
       </Modal>

@@ -3161,6 +3161,18 @@ const PharmDashboard=()=>{
             <p style={{margin:0,fontSize:14,fontWeight:750,color:'#1E293B'}}>{sel?.medication_name||'Medication not recorded'}</p>
             <p style={{margin:'4px 0 0',fontSize:12.5,color:'#64748B'}}>{sel?.dosage||'Dose not stated'} · {sel?.frequency||'Frequency not stated'} · {sel?.duration||'Duration not stated'}</p>
           </div>
+          {sel?.diagnosis&&(
+            <div style={{padding:'13px 14px',background:'#F0FDF4',border:'1px solid #BBF7D0',borderRadius:12}}>
+              <p style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'#047857',marginBottom:6}}>Doctor's Diagnosis</p>
+              <p style={{margin:0,fontSize:14,fontWeight:750,color:'#1E293B'}}>{sel.diagnosis}</p>
+            </div>
+          )}
+          {sel?.notes&&(
+            <div style={{padding:'13px 14px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:12}}>
+              <p style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'#92400E',marginBottom:6}}>Prescription Notes</p>
+              <p style={{margin:0,fontSize:13,color:'#374151'}}>{sel.notes}</p>
+            </div>
+          )}
           <Field label="Select Medicine from Inventory">
             <select value={medicineId} onChange={e=>setMedicineId(e.target.value)} style={{...inp,color:medicineId?'#0F172A':'#94A3B8'}}>
               <option value="">Choose an available batch</option>

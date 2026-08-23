@@ -234,6 +234,36 @@ const GH_LABS = [
   {id:'vdrl',      cat:'Serology',     label:'VDRL / Syphilis Test'},
 ];
 
+// Catalogue only: pharmacists must still record the real batch, quantity and
+// expiry date before an item becomes available for dispensing.
+const MEDICINE_CATALOG = [
+  {name:'Paracetamol 500mg tablets', category:'Analgesic / Antipyretic'},
+  {name:'Ibuprofen 400mg tablets', category:'Anti-inflammatory'},
+  {name:'Diclofenac 50mg tablets', category:'Anti-inflammatory'},
+  {name:'Amoxicillin 500mg capsules', category:'Antibiotic'},
+  {name:'Amoxicillin-Clavulanate 625mg tablets', category:'Antibiotic'},
+  {name:'Azithromycin 500mg tablets', category:'Antibiotic'},
+  {name:'Ciprofloxacin 500mg tablets', category:'Antibiotic'},
+  {name:'Metronidazole 400mg tablets', category:'Antibiotic'},
+  {name:'Artemether-Lumefantrine 20/120mg tablets', category:'Antimalarial'},
+  {name:'Artesunate injection 60mg', category:'Antimalarial'},
+  {name:'Oral Rehydration Salts sachets', category:'Gastrointestinal'},
+  {name:'Zinc sulfate 20mg tablets', category:'Gastrointestinal'},
+  {name:'Omeprazole 20mg capsules', category:'Gastrointestinal'},
+  {name:'Amlodipine 5mg tablets', category:'Cardiovascular'},
+  {name:'Losartan 50mg tablets', category:'Cardiovascular'},
+  {name:'Hydrochlorothiazide 25mg tablets', category:'Cardiovascular'},
+  {name:'Metformin 500mg tablets', category:'Antidiabetic'},
+  {name:'Glibenclamide 5mg tablets', category:'Antidiabetic'},
+  {name:'Salbutamol inhaler 100mcg', category:'Respiratory'},
+  {name:'Cetirizine 10mg tablets', category:'Antihistamine'},
+  {name:'Hydrocortisone 1% cream', category:'Dermatology'},
+  {name:'Clotrimazole 1% cream', category:'Antifungal'},
+  {name:'Ferrous sulfate 200mg tablets', category:'Haematinic'},
+  {name:'Folic acid 5mg tablets', category:'Haematinic'},
+  {name:'Vitamin C 500mg tablets', category:'Supplement'},
+];
+
 /* ── GLOBAL STYLES ── */
 const GStyles = () => (
   <style>{`
@@ -1148,7 +1178,7 @@ const NurseDashboard=()=>{
   const completion=shiftTotal?Math.round((captured/shiftTotal)*100):0;
   const nurseName=localStorage.getItem('display_name')||'Nurse';
   const waitLabel=p=>{
-    const raw=p.registration_date||p.created_at;
+    const raw=p.triage_arrival_time||p.registration_date||p.created_at;
     if(!raw)return 'Recently';
     const mins=Math.max(0,Math.floor((Date.now()-new Date(raw).getTime())/60000));
     if(Number.isNaN(mins))return 'Recently';
@@ -1365,10 +1395,10 @@ const NursePatients=()=>{
 
   const readmit=async(p)=>{
     const r=await fetch(`${BASE_URL}/api/patients/${p.patient_id}/status`,{method:'PATCH',headers:ah(),body:JSON.stringify({
-  status:'waiting',
-  registration_date: new Date().toISOString().split('T')[0]})});
+      status:'waiting'})});
+    const body=await r.json().catch(()=>({}));
     if(r.ok){refresh();toast.show(`${p.full_name||'Patient'} added to triage queue.`);}
-    else toast.show('Failed.','error');
+    else toast.show(body.message||'Unable to re-admit patient.','error');
   };
 
   const statusOf=p=>(p.status||'active').toLowerCase();
@@ -1468,7 +1498,7 @@ const NurseTriage=()=>{
   };
 
   const waitMinutes=p=>{
-    const date=new Date(p.registration_date||p.created_at);
+    const date=new Date(p.triage_arrival_time||p.registration_date||p.created_at);
     if(Number.isNaN(date.getTime()))return 0;
     return Math.max(0,Math.floor((Date.now()-date.getTime())/60000));
   };
@@ -1531,7 +1561,7 @@ const NurseTriage=()=>{
         ]} rows={queue.map(p=>({
           name:<div className="patient-name-cell"><span className="patient-avatar">{(p.full_name||'P').charAt(0).toUpperCase()}</span><div><span style={{fontWeight:800,color:'#172033'}}>{p.full_name||'Unnamed patient'}</span><span style={{fontSize:10.5,color:'#8490A3',display:'block',marginTop:2}}>{p.gender||'Gender not recorded'}</span></div></div>,
           id:  <span style={{color:'#64748B',fontFamily:'monospace',fontSize:13}}>{p.national_patient_id||p.patient_id}</span>,
-          reg: <span style={{color:'#64748B'}}>{fmtArrival(p.registration_date)}</span>,
+          reg: <span style={{color:'#64748B'}}>{fmtArrival(p.triage_arrival_time||p.registration_date)}</span>,
           wait:<span style={{fontWeight:700,color:waitMinutes(p)>30?'#DC2626':'#56647A'}}>{formatWait(waitMinutes(p))}</span>,
           stat:<Badge text={waitMinutes(p)>30?'Review next':'Waiting'} color={waitMinutes(p)>30?'red':'yellow'}/>,
           act:<div style={{display:'flex',gap:7}}>
@@ -1620,7 +1650,7 @@ const NurseSchedule=()=>{
   };
 
   const waitMinutes=p=>{
-    const date=new Date(p.registration_date||p.created_at);
+    const date=new Date(p.triage_arrival_time||p.registration_date||p.created_at);
     if(Number.isNaN(date.getTime()))return 0;
     return Math.max(0,Math.floor((Date.now()-date.getTime())/60000));
   };
@@ -1676,7 +1706,7 @@ const NurseSchedule=()=>{
           pos:<span style={{width:28,height:28,borderRadius:9,display:'grid',placeItems:'center',background:'#F1F5F9',color:'#56647A',fontSize:11,fontWeight:800}}>{queue.indexOf(p)+1}</span>,
           name:<div className="patient-name-cell"><span className="patient-avatar">{(p.full_name||'P').charAt(0).toUpperCase()}</span><div><span style={{fontWeight:800,color:p.full_name?'#172033':'#8490A3'}}>{p.full_name||'Unnamed patient'}</span><span style={{fontSize:10.5,color:'#8490A3',display:'block',marginTop:2}}>{p.gender||'Patient record'}</span></div></div>,
           id:  <span style={{color:'#64748B',fontFamily:'monospace',fontSize:13}}>{p.national_patient_id||p.patient_id||'—'}</span>,
-          reg: <span style={{color:'#64748B'}}>{fmtArrival(p.registration_date)}</span>,
+          reg: <span style={{color:'#64748B'}}>{fmtArrival(p.triage_arrival_time||p.registration_date)}</span>,
           wait:<span style={{fontWeight:700,color:waitMinutes(p)>30?'#DC2626':'#56647A'}}>{formatWait(waitMinutes(p))}</span>,
           stat:<Badge text="Awaiting vitals" color="yellow"/>,
           act: <div style={{display:'flex',gap:8}}>
@@ -2473,7 +2503,7 @@ const DoctorConsultation=()=>{
     setSendingRx(true);
     try{
       const r=await fetch(`${BASE_URL}/api/prescriptions`,{method:'POST',headers:ah(),
-        body:JSON.stringify({patient_id:patientId,encounter_id:encounterId,medication_name:rx.med,dosage:rx.dose,frequency:rx.freq,duration:rx.dur,notes:rx.notes||''})});
+        body:JSON.stringify({patient_id:patientId,encounter_id:encounterId,medication_name:rx.med,dosage:rx.dose,frequency:rx.freq,duration:rx.dur,prescribing_reason:rx.notes||''})});
       const body=await r.json().catch(()=>({}));
       if(r.ok){if(body.encounter_id)setEncounterId(body.encounter_id);toast.show('Prescription sent to pharmacy!');setShowRx(false);setRx({med:'',dose:'',freq:'',dur:'',notes:''});load();}
       else toast.show(body.message||'Failed.','error');
@@ -3172,10 +3202,10 @@ const PharmDashboard=()=>{
               <p style={{margin:0,fontSize:14,fontWeight:750,color:'#1E293B'}}>{sel.diagnosis}</p>
             </div>
           )}
-          {sel?.notes&&(
+          {(sel?.prescribing_reason||sel?.notes)&&(
             <div style={{padding:'13px 14px',background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:12}}>
-              <p style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'#92400E',marginBottom:6}}>Prescription Notes</p>
-              <p style={{margin:0,fontSize:13,color:'#374151'}}>{sel.notes}</p>
+              <p style={{fontSize:11,fontWeight:800,textTransform:'uppercase',letterSpacing:'.08em',color:'#92400E',marginBottom:6}}>Reason for prescribing</p>
+              <p style={{margin:0,fontSize:13,color:'#374151'}}>{sel.prescribing_reason||sel.notes}</p>
             </div>
           )}
           <Field label="Select Medicine from Inventory">
@@ -3342,7 +3372,17 @@ const PharmInventory=()=>{
             <p style={{fontSize:12,fontWeight:800,color:'#0F766E',marginBottom:3}}>Batch registration</p>
             <p style={{fontSize:11.5,color:'#5F7470',lineHeight:1.5}}>Enter the label details exactly as supplied so the batch remains traceable during dispensing.</p>
           </div>
-          <Field label="Medicine Name" required><input value={f.medicine_name} onChange={e=>setF({...f,medicine_name:e.target.value})} placeholder="e.g. Amoxicillin 500mg" style={inp}/></Field>
+          <Field label="Medicine Name" required>
+            <input list="medicine-catalog" value={f.medicine_name} onChange={e=>{
+              const medicine_name=e.target.value;
+              const match=MEDICINE_CATALOG.find(item=>item.name===medicine_name);
+              setF({...f,medicine_name,category:match?.category||f.category});
+            }} placeholder="Search or enter a medicine name" style={inp}/>
+            <datalist id="medicine-catalog">
+              {MEDICINE_CATALOG.map(item=><option key={item.name} value={item.name}>{item.category}</option>)}
+            </datalist>
+            <p style={{fontSize:11,color:'#8490A3',marginTop:6}}>Choose a common medicine or enter a different approved item. Batch details are still required.</p>
+          </Field>
           <Field label="Category"><input value={f.category} onChange={e=>setF({...f,category:e.target.value})} placeholder="e.g. Antibiotic" style={inp}/></Field>
           <div className="form-grid-2">
             <Field label="Batch Number" required><input value={f.batch_number} onChange={e=>setF({...f,batch_number:e.target.value})} placeholder="e.g. GH-2026-001" style={inp}/></Field>
@@ -3923,6 +3963,11 @@ const AdminLogs=()=>{
 ══════════════════════════════════════ */
 const AdminReports=()=>{
   const [results,setResults]=React.useState([]);
+  const [registrationResults,setRegistrationResults]=React.useState([]);
+  const [labResults,setLabResults]=React.useState([]);
+  const [reportType,setReportType]=React.useState('visits');
+  const [registrationGroup,setRegistrationGroup]=React.useState('week');
+  const [labStatus,setLabStatus]=React.useState('');
   const [loading,setLoading]=React.useState(false);
   const [searched,setSearched]=React.useState(false);
   const [filters,setFilters]=React.useState({from_date:'',to_date:'',diagnosis:'',doctor_id:''});
@@ -3942,12 +3987,26 @@ const AdminReports=()=>{
       const params=new URLSearchParams();
       if(filters.from_date) params.append('from_date',filters.from_date);
       if(filters.to_date)   params.append('to_date',filters.to_date);
-      if(filters.diagnosis) params.append('diagnosis',filters.diagnosis);
-      if(filters.doctor_id) params.append('doctor_id',filters.doctor_id);
-      const r=await fetch(`${BASE_URL}/api/patients/reports?${params}`,{headers:ah()});
+      let url=`${BASE_URL}/api/patients/reports?${params}`;
+      if(reportType==='visits'){
+        if(filters.diagnosis) params.append('diagnosis',filters.diagnosis);
+        if(filters.doctor_id) params.append('doctor_id',filters.doctor_id);
+        url=`${BASE_URL}/api/patients/reports?${params}`;
+      }else if(reportType==='registrations'){
+        params.append('group_by',registrationGroup);
+        url=`${BASE_URL}/api/patients/reports/registrations?${params}`;
+      }else{
+        if(filters.diagnosis) params.append('test_type',filters.diagnosis);
+        if(labStatus) params.append('result_status',labStatus);
+        url=`${BASE_URL}/api/patients/reports/labs?${params}`;
+      }
+      const r=await fetch(url,{headers:ah()});
       const d=await r.json();
-      setResults(Array.isArray(d)?d:[]);
-    }catch{toast.show('Failed to load report.','error');}
+      if(!r.ok)throw new Error(d.message||'Failed to load report.');
+      setResults(reportType==='visits'&&Array.isArray(d)?d:[]);
+      setRegistrationResults(reportType==='registrations'&&Array.isArray(d)?d:[]);
+      setLabResults(reportType==='labs'&&Array.isArray(d)?d:[]);
+    }catch(err){toast.show(err.message||'Failed to load report.','error');}
     finally{setLoading(false);}
   };
 
@@ -3960,23 +4019,33 @@ const AdminReports=()=>{
   };
 
 const diagnosisCounts=results.reduce((a,r)=>{
-  if(!r.diagnosis||r.diagnosis.trim()==='')return a;
+  if(!r.diagnosis||!r.diagnosis.trim()||/^(unknown|not recorded|n\/?a)$/i.test(r.diagnosis.trim()))return a;
   a[r.diagnosis]=(a[r.diagnosis]||0)+1;return a;
 },{});  
 const topDiagnoses=Object.entries(diagnosisCounts).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const doctorCounts=results.reduce((a,r)=>{const d=r.doctor_name||'Unknown';a[d]=(a[d]||0)+1;return a;},{});
   const uniquePatients=new Set(results.map(r=>r.national_patient_id)).size;
+  const registrationTotal=registrationResults.reduce((sum,row)=>sum+Number(row.registrations||0),0);
+  const labStatusOf=row=>String(row.result_status||row.request_status||'pending').toLowerCase();
+  const labStatusCounts=labResults.reduce((acc,row)=>{const status=labStatusOf(row);acc[status]=(acc[status]||0)+1;return acc;},{});
+  const labTestCounts=labResults.reduce((acc,row)=>{const test=row.test_type||'Unspecified test';acc[test]=(acc[test]||0)+1;return acc;},{});
 
   return(
     <AL nav={adminNav} title="Reports & Analytics">
-      <NursePageIntro kicker="Hospital Intelligence" title="Patient visit reports" description="Filter records by date range, diagnosis, or doctor to generate reports for any period. Use the quick filters to jump to common time ranges.">
-        <Btn onClick={()=>{setFilters({from_date:'',to_date:'',diagnosis:'',doctor_id:''});setResults([]);setSearched(false);}} v="ghost" sz="sm">Clear all</Btn>
+      <NursePageIntro kicker="Hospital Intelligence" title="Hospital reports" description="Review clinical visits, new patient registration trends, and laboratory activity across any date range.">
+        <Btn onClick={()=>{setFilters({from_date:'',to_date:'',diagnosis:'',doctor_id:''});setResults([]);setRegistrationResults([]);setLabResults([]);setSearched(false);}} v="ghost" sz="sm">Clear all</Btn>
       </NursePageIntro>
+
+      <div className="filter-pills" style={{marginBottom:16}} aria-label="Report type">
+        {[['visits','Patient visits'],['registrations','Patient registration'],['labs','Laboratory activity']].map(([key,label])=>(
+          <button key={key} className={`filter-pill ${reportType===key?'is-active':''}`} onClick={()=>{setReportType(key);setSearched(false);}}>{label}</button>
+        ))}
+      </div>
 
       {/* Filter panel */}
       <section className="clinical-panel" style={{marginBottom:20}}>
         <div className="clinical-panel-header">
-          <div><h3 style={{fontSize:16,color:'#1E293B'}}>Filter options</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>Select your criteria then click Generate Report</p></div>
+          <div><h3 style={{fontSize:16,color:'#1E293B'}}>{reportType==='visits'?'Visit report filters':reportType==='registrations'?'Registration trend filters':'Laboratory report filters'}</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>Select your criteria then click Generate Report</p></div>
         </div>
         <div style={{padding:'18px 22px'}}>
           {/* Quick filters */}
@@ -4001,26 +4070,36 @@ const topDiagnoses=Object.entries(diagnosisCounts).sort((a,b)=>b[1]-a[1]).slice(
                 <input type="date" value={filters.to_date} onChange={e=>setFilters({...filters,to_date:e.target.value})} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
               </div>
             </div>
-            <div className="form-grid-2">
+            {reportType!=='registrations'&&<div className="form-grid-2">
               <div>
-                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Diagnosis keyword</label>
-                <input value={filters.diagnosis} onChange={e=>setFilters({...filters,diagnosis:e.target.value})} placeholder="e.g. Malaria, Typhoid, Hypertension..." style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>{reportType==='visits'?'Diagnosis keyword':'Test type'}</label>
+                <input value={filters.diagnosis} onChange={e=>setFilters({...filters,diagnosis:e.target.value})} placeholder={reportType==='visits'?'e.g. Malaria, Typhoid, Hypertension...':'e.g. Malaria, FBC, Blood Sugar...'} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}/>
               </div>
-              <div>
+              {reportType==='visits'?<div>
                 <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Doctor</label>
                 <select value={filters.doctor_id} onChange={e=>setFilters({...filters,doctor_id:e.target.value})} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13,color:filters.doctor_id?'#172033':'#9aa5b5'}}>
                   <option value="">All doctors</option>
                   {doctors.map(d=><option key={d.user_id} value={d.user_id}>{d.full_name}</option>)}
                 </select>
-              </div>
-            </div>
+              </div>:<div>
+                <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Result status</label>
+                <select value={labStatus} onChange={e=>setLabStatus(e.target.value)} style={{width:'100%',padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}>
+                  <option value="">All statuses</option><option value="positive">Positive</option><option value="abnormal">Abnormal</option><option value="normal">Normal</option><option value="pending">Pending</option>
+                </select>
+              </div>}
+            </div>}
           </div>
+
+          {reportType==='registrations'&&<div style={{marginBottom:16}}>
+            <label style={{fontSize:11,fontWeight:700,color:'#748197',textTransform:'uppercase',letterSpacing:.5,display:'block',marginBottom:6}}>Group registrations by</label>
+            <select value={registrationGroup} onChange={e=>setRegistrationGroup(e.target.value)} style={{width:220,padding:'10px 13px',border:'1px solid #dfe6ee',borderRadius:10,fontSize:13}}><option value="week">Week</option><option value="month">Month</option></select>
+          </div>}
 
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             <Btn onClick={runReport} disabled={loading} v="primary">
               {loading?'Generating...':'▤ Generate Report'}
             </Btn>
-            {searched&&!loading&&<span style={{fontSize:13,color:'#748197',fontWeight:600}}>{results.length} record(s) found · {uniquePatients} unique patient(s)</span>}
+            {searched&&!loading&&<span style={{fontSize:13,color:'#748197',fontWeight:600}}>{reportType==='visits'?`${results.length} record(s) found · ${uniquePatients} unique patient(s)`:reportType==='registrations'?`${registrationTotal} new patient(s) across ${registrationResults.length} period(s)`: `${labResults.length} lab request(s) found`}</span>}
           </div>
         </div>
       </section>
@@ -4111,9 +4190,43 @@ dr:<span style={{fontSize:13,color:'#64748B'}}>{r.doctor_name?(r.doctor_name.sta
         </>
       )}
 
-      {searched&&!loading&&results.length===0&&(
+      {searched&&!loading&&reportType==='registrations'&&registrationResults.length>0&&(
+        <>
+          <div className="nurse-mini-stats" style={{marginBottom:20}}>
+            <NurseMiniStat symbol="+" value={registrationTotal} label="New patients registered" color="#0F766E" bg="#ECFDF5"/>
+            <NurseMiniStat symbol="≡" value={registrationResults.length} label={`Reporting ${registrationGroup==='week'?'weeks':'months'}`} color="#2563EB" bg="#EFF6FF"/>
+          </div>
+          <section className="clinical-panel">
+            <div className="clinical-panel-header"><div><h3 style={{fontSize:16,color:'#1E293B'}}>Patient registration trend</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>New accounts only; returning patients are not counted again.</p></div><button onClick={()=>window.print()} style={{padding:'8px 16px',background:'#F8FAFC',border:'1px solid #E5EAF1',borderRadius:9,cursor:'pointer',fontSize:12,fontWeight:700,color:'#475569'}}>Print report</button></div>
+            <div style={{padding:18}}><Table cols={[{key:'period',label:'Period starting',w:'55%'},{key:'count',label:'New patient registrations',w:'45%'}]} rows={registrationResults.map(row=>({period:<strong style={{fontSize:13}}>{fmtDate(row.period_start)}</strong>,count:<strong style={{fontSize:16,color:'#0F766E'}}>{row.registrations}</strong>}))} empty="No registrations match your filters."/></div>
+          </section>
+        </>
+      )}
+
+      {searched&&!loading&&reportType==='labs'&&labResults.length>0&&(
+        <>
+          <div className="nurse-mini-stats" style={{marginBottom:20}}>
+            <NurseMiniStat symbol="◇" value={labResults.length} label="Lab tests requested" color="#7C3AED" bg="#F5F3FF"/>
+            <NurseMiniStat symbol="✓" value={labStatusCounts.normal||0} label="Normal results" color="#15803D" bg="#F0FDF4"/>
+            <NurseMiniStat symbol="!" value={(labStatusCounts.positive||0)+(labStatusCounts.abnormal||0)} label="Positive / abnormal" color="#DC2626" bg="#FEF2F2"/>
+            <NurseMiniStat symbol="◷" value={labStatusCounts.pending||0} label="Pending results" color="#B45309" bg="#FFFBEB"/>
+          </div>
+          <section className="clinical-panel" style={{marginBottom:20}}>
+            <div className="clinical-panel-header"><div><h3 style={{fontSize:16,color:'#1E293B'}}>Most requested lab tests</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>Useful for identifying common investigations and disease patterns.</p></div></div>
+            <div style={{padding:'18px 22px',display:'flex',flexWrap:'wrap',gap:10}}>{Object.entries(labTestCounts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([test,count])=><div key={test} style={{padding:'10px 13px',border:'1px solid #E5EAF1',borderRadius:10,minWidth:180}}><strong style={{display:'block',fontSize:12.5}}>{test}</strong><span style={{display:'block',fontSize:12,color:'#0F766E',fontWeight:800,marginTop:4}}>{count} request{count===1?'':'s'}</span></div>)}</div>
+          </section>
+          <section className="clinical-panel">
+            <div className="clinical-panel-header"><div><h3 style={{fontSize:16,color:'#1E293B'}}>Laboratory records</h3><p style={{fontSize:12,color:'#8490A3',marginTop:3}}>{labResults.length} request(s) matching your filters</p></div><button onClick={()=>window.print()} style={{padding:'8px 16px',background:'#F8FAFC',border:'1px solid #E5EAF1',borderRadius:9,cursor:'pointer',fontSize:12,fontWeight:700,color:'#475569'}}>Print report</button></div>
+            <div style={{padding:18}}><Table cols={[{key:'date',label:'Request date',w:'16%'},{key:'test',label:'Test',w:'25%'},{key:'patient',label:'Patient',w:'22%'},{key:'result',label:'Result',w:'20%'},{key:'status',label:'Status',w:'17%'}]} rows={labResults.map(row=>({date:fmtDate(row.request_date),test:<strong style={{fontSize:13}}>{row.test_type}</strong>,patient:<div><strong style={{fontSize:13}}>{row.patient_name||'—'}</strong><small style={{display:'block',color:'#8490A3',marginTop:2}}>{row.national_patient_id||'—'}</small></div>,result:row.result_value||'Awaiting result',status:<Badge text={labStatusOf(row).replace(/_/g,' ')} color={labStatusOf(row)==='normal'?'green':['positive','abnormal'].includes(labStatusOf(row))?'red':'yellow'}/>}))} empty="No laboratory requests match your filters."/></div>
+          </section>
+        </>
+      )}
+
+      {searched&&!loading&&reportType==='visits'&&results.length===0&&(
         <NurseEmptyState symbol="▤" title="No records found" description="No visit records match your selected filters. Try adjusting the date range or removing the diagnosis keyword."/>
       )}
+      {searched&&!loading&&reportType==='registrations'&&registrationResults.length===0&&<NurseEmptyState symbol="+" title="No registrations found" description="No new patient registrations match the selected period."/>}
+      {searched&&!loading&&reportType==='labs'&&labResults.length===0&&<NurseEmptyState symbol="◇" title="No laboratory records found" description="No laboratory requests match the selected filters."/>}
     </AL>
   );
 };

@@ -3076,6 +3076,8 @@ const PharmDashboard=()=>{
   const [loading,setLoading]=React.useState(true);
   const [sel,setSel]=React.useState(null);
   const [medicineId,setMedicineId]=React.useState('');
+  const [medicineSearch,setMedicineSearch]=React.useState('');
+  const [medicinePickerOpen,setMedicinePickerOpen]=React.useState(false);
   const [qty,setQty]=React.useState('');
   const [sub,setSub]=React.useState(false);
   const [search,setSearch]=React.useState('');
@@ -3102,7 +3104,7 @@ const PharmDashboard=()=>{
       const r=await fetch(`${BASE_URL}/api/dispensed`,{method:'POST',headers:ah(),
         body:JSON.stringify({prescription_id:sel.prescription_id,medicine_id:parseInt(medicineId),
           dispensed_by:user.user_id,batch_number:med?.batch_number||'',quantity_dispensed:parseInt(qty)})});
-      if(r.ok){toast.show(`Dispensed to ${sel.patient_name}!`);setSel(null);setMedicineId('');setQty('');load();}
+      if(r.ok){toast.show(`Dispensed to ${sel.patient_name}!`);setSel(null);setMedicineId('');setMedicineSearch('');setMedicinePickerOpen(false);setQty('');load();}
       else{const e=await r.json().catch(()=>({}));toast.show(e.message||'Failed.','error');}
     }catch{toast.show('Network error.','error');}finally{setSub(false);}
   };
@@ -3113,6 +3115,11 @@ const PharmDashboard=()=>{
   const stockAlerts=inventory.filter(m=>!['in','disposed'].includes(pharmacyInventoryState(m)));
   const availableInventory=inventory.filter(m=>!['out','expired','disposed'].includes(pharmacyInventoryState(m)));
   const selectedMedicine=inventory.find(m=>String(m.medicine_id)===String(medicineId));
+  const medicineMatches=availableInventory.filter(m=>{
+    const query=medicineSearch.trim().toLowerCase();
+    if(!query)return true;
+    return [m.medicine_name,m.batch_number,m.category].some(value=>String(value||'').toLowerCase().includes(query));
+  }).slice(0,12);
   const filtered=prescriptions.filter(p=>{
     const matchesSearch=(p.patient_name||'').toLowerCase().includes(search.toLowerCase())||
       (p.medication_name||'').toLowerCase().includes(search.toLowerCase())||
@@ -3182,7 +3189,7 @@ const PharmDashboard=()=>{
         </div>
       </section>
 
-      <Modal open={!!sel} onClose={()=>{setSel(null);setMedicineId('');setQty(''); }} title="Dispense Prescription" width={500}>
+      <Modal open={!!sel} onClose={()=>{setSel(null);setMedicineId('');setMedicineSearch('');setMedicinePickerOpen(false);setQty(''); }} title="Dispense Prescription" width={500}>
         <MB>
           <div className="vitals-patient-card">
             <div className="patient-name-cell">
@@ -3208,15 +3215,28 @@ const PharmDashboard=()=>{
               <p style={{margin:0,fontSize:13,color:'#374151'}}>{sel.prescribing_reason||sel.notes}</p>
             </div>
           )}
-          <Field label="Select Medicine from Inventory">
-            <select value={medicineId} onChange={e=>setMedicineId(e.target.value)} style={{...inp,color:medicineId?'#0F172A':'#94A3B8'}}>
-              <option value="">Choose an available batch</option>
-              {availableInventory.map(m=>(
-                <option key={m.medicine_id} value={m.medicine_id}>
-                  {m.medicine_name} | Batch: {m.batch_number} | Stock: {m.quantity} units
-                </option>
-              ))}
-            </select>
+          <Field label="Find medicine or batch">
+            <div style={{position:'relative'}}>
+              <input value={medicineSearch}
+                onFocus={()=>setMedicinePickerOpen(true)}
+                onChange={e=>{setMedicineSearch(e.target.value);setMedicineId('');setMedicinePickerOpen(true);}}
+                placeholder="Start typing e.g. amox, malaria or GH-2026..." style={inp}
+                role="combobox" aria-expanded={medicinePickerOpen} aria-controls="medicine-batch-options" aria-autocomplete="list"/>
+              {medicinePickerOpen&&<div id="medicine-batch-options" role="listbox" style={{position:'absolute',zIndex:30,top:'calc(100% + 6px)',left:0,right:0,maxHeight:220,overflowY:'auto',background:'white',border:'1px solid #CBD5E1',borderRadius:11,boxShadow:'0 16px 32px rgba(15,23,42,.16)',padding:5}}>
+                {medicineMatches.length===0
+                  ?<p style={{padding:'10px 11px',margin:0,fontSize:12.5,color:'#64748B'}}>No available batch matches “{medicineSearch}”.</p>
+                  :medicineMatches.map(m=>(
+                    <button type="button" role="option" aria-selected={String(medicineId)===String(m.medicine_id)} key={m.medicine_id}
+                      onMouseDown={e=>e.preventDefault()}
+                      onClick={()=>{setMedicineId(String(m.medicine_id));setMedicineSearch(`${m.medicine_name} · Batch ${m.batch_number||'—'}`);setMedicinePickerOpen(false);}}
+                      style={{display:'block',width:'100%',padding:'10px 11px',border:0,borderRadius:8,textAlign:'left',background:String(medicineId)===String(m.medicine_id)?'#ECFDF5':'transparent',cursor:'pointer'}}>
+                      <strong style={{display:'block',fontSize:12.5,color:'#1E293B'}}>{m.medicine_name}</strong>
+                      <span style={{display:'block',marginTop:3,fontSize:11.5,color:'#64748B'}}>Batch: {m.batch_number||'—'} · {m.quantity||0} units · {m.category||'Uncategorised'}</span>
+                    </button>
+                  ))}
+              </div>}
+            </div>
+            <p style={{fontSize:11,color:'#8490A3',marginTop:6}}>Type a medicine name, category, or batch number, then select an available batch.</p>
           </Field>
           {selectedMedicine&&<div style={{display:'flex',justifyContent:'space-between',gap:12,padding:'11px 13px',background:'#ECFDF5',border:'1px solid #A7F3D0',borderRadius:11}}>
             <div><p style={{fontSize:11,fontWeight:800,color:'#047857',marginBottom:3}}>BATCH {selectedMedicine.batch_number||'—'}</p><p style={{fontSize:12,color:'#47605D'}}>{selectedMedicine.quantity||0} units available · Expires {fmtDate(selectedMedicine.expiry_date)}</p></div>
@@ -3228,7 +3248,7 @@ const PharmDashboard=()=>{
           <p style={{fontSize:11.5,color:'#8490A3',lineHeight:1.55,margin:0}}>Confirm the medicine, strength, batch, quantity, and patient identity before completing this dispense.</p>
         </MB>
         <MF>
-          <Btn onClick={()=>{setSel(null);setMedicineId('');setQty(''); }} v="ghost">Cancel</Btn>
+          <Btn onClick={()=>{setSel(null);setMedicineId('');setMedicineSearch('');setMedicinePickerOpen(false);setQty(''); }} v="ghost">Cancel</Btn>
           <Btn onClick={dispense} disabled={sub} v="green">{sub?'Dispensing...':'Confirm dispense'}</Btn>
         </MF>
       </Modal>
